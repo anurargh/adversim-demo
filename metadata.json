@@ -1,0 +1,6 @@
+{
+  "name": "AdverSim - Cyber Defense Simulation Framework",
+  "description": "Virtual laboratory for co-evolving cyber attacker and defender agents across multi-node networks with real-time analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
