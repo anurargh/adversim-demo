@@ -33,7 +33,7 @@ export type AttackerProfileType =
   | 'Reconnaissance-Heavy'
   | 'Adaptive-Bandit (UCB)';
 
-export type NodeType = 'User' | 'Server' | 'Admin' | 'DMZ' | 'Honeypot';
+export type NodeType = 'User' | 'Server' | 'Admin' | 'DMZ' | 'Honeypot' | 'SOC';
 
 export interface SimNode {
   id: string;
@@ -46,6 +46,8 @@ export interface SimNode {
   status: 'normal' | 'under_attack' | 'compromised' | 'isolated';
   lastDetectedRound?: number;
   fpr: number; // False Positive Rate
+  x?: number;
+  y?: number;
 }
 
 export interface NetworkEdge {
@@ -131,4 +133,8 @@ export interface SimulationState {
   metrics: AblationMetric[];
   mttdHistory: { round: number; [key: string]: number }[];
   logs: string[];
+  attackStartRound: number | null;
+  rollingMttdBuffer: number[];
+  simMttdValues: { A: number; B: number; C: number; D: number; E: number };
+  totalAlertCount: number;
 }
