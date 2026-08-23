@@ -5,7 +5,6 @@ Predicts the most probable next attack stage and recommends proactive defense ha
 when prediction confidence exceeds 50%.
 """
 
-import numpy as np
 from typing import List, Dict, Any, Tuple, Union
 
 try:
@@ -36,11 +35,10 @@ class StagePredictor:
         self.confidence_threshold = confidence_threshold
 
         # Initialize uniform stage transition matrix (7x7)
-        self.transition_matrix = np.full(
-            (self.n_stages, self.n_stages),
-            1.0 / self.n_stages,
-            dtype=np.float64
-        )
+        self.transition_matrix = [
+            [1.0 / self.n_stages for _ in range(self.n_stages)]
+            for _ in range(self.n_stages)
+        ]
         self.is_trained: bool = False
 
         # Pre-populate default technique mappings per stage
@@ -71,7 +69,10 @@ class StagePredictor:
         """
         Learns 7x7 kill chain stage transition probability matrix from attack sequences.
         """
-        counts = np.ones((self.n_stages, self.n_stages), dtype=np.float64) * 0.1  # Laplace smoothing
+        counts = [
+            [0.1 for _ in range(self.n_stages)]  # Laplace smoothing
+            for _ in range(self.n_stages)
+        ]
 
         for seq in sequences:
             if not seq:
@@ -90,11 +91,14 @@ class StagePredictor:
                 if from_s in self.stage_to_idx and to_s in self.stage_to_idx:
                     u = self.stage_to_idx[from_s]
                     v = self.stage_to_idx[to_s]
-                    counts[u, v] += 1.0
+                    counts[u][v] += 1.0
 
         # Row-normalize transition matrix
-        row_sums = counts.sum(axis=1, keepdims=True)
-        self.transition_matrix = counts / row_sums
+        for u in range(self.n_stages):
+            row_sum = sum(counts[u])
+            for v in range(self.n_stages):
+                self.transition_matrix[u][v] = counts[u][v] / row_sum
+
         self.is_trained = True
         print(f"[STAGE PREDICTOR] Trained 7x7 stage transition matrix over {len(sequences)} sequences.")
 
@@ -109,7 +113,7 @@ class StagePredictor:
         idx = self.stage_to_idx[current_stage]
         probs = self.transition_matrix[idx]
 
-        best_next_idx = int(np.argmax(probs))
+        best_next_idx = probs.index(max(probs))
         next_stage = self.stages[best_next_idx]
         confidence = float(probs[best_next_idx])
 

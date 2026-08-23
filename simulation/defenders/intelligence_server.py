@@ -4,8 +4,23 @@ Aggregates node Bayesian weight vectors using inverse False Positive Rate (FPR) 
 Performs periodic k-round intelligence sync broadcasts and priority honeypot broadcasts.
 """
 
-import numpy as np
 from typing import Dict, List, Any, Optional
+
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    class _NpShim:
+        ndarray = list
+        float64 = float
+        @staticmethod
+        def array(data, dtype=None):
+            return list(data)
+        @staticmethod
+        def ones(n, dtype=None):
+            return [1.0] * n
+    np = _NpShim()
 
 K_ROUNDS = 5  # Sharing cycle length
 
@@ -42,21 +57,36 @@ class IntelligenceServer:
         total_inv_fpr = 0.0
         weighted_sum_vector = None
 
-        for node_id, vec in self.node_vectors.items():
-            fpr = self.node_fprs.get(node_id, 0.05)
-            inv_fpr = 1.0 / fpr
-            total_inv_fpr += inv_fpr
+        if HAS_NUMPY:
+            for node_id, vec in self.node_vectors.items():
+                fpr = self.node_fprs.get(node_id, 0.05)
+                inv_fpr = 1.0 / fpr
+                total_inv_fpr += inv_fpr
 
-            if weighted_sum_vector is None:
-                weighted_sum_vector = inv_fpr * vec
+                if weighted_sum_vector is None:
+                    weighted_sum_vector = inv_fpr * vec
+                else:
+                    weighted_sum_vector += inv_fpr * vec
+
+            if weighted_sum_vector is not None and total_inv_fpr > 0:
+                self.global_aggregated_vector = weighted_sum_vector / total_inv_fpr
             else:
-                weighted_sum_vector += inv_fpr * vec
-
-        if weighted_sum_vector is not None and total_inv_fpr > 0:
-            self.global_aggregated_vector = weighted_sum_vector / total_inv_fpr
+                first_key = next(iter(self.node_vectors))
+                self.global_aggregated_vector = self.node_vectors[first_key]
         else:
-            first_key = next(iter(self.node_vectors))
-            self.global_aggregated_vector = self.node_vectors[first_key]
+            length = len(next(iter(self.node_vectors.values())))
+            weighted_sum = [0.0] * length
+            for node_id, vec in self.node_vectors.items():
+                fpr = self.node_fprs.get(node_id, 0.05)
+                inv_fpr = 1.0 / fpr
+                total_inv_fpr += inv_fpr
+                for i in range(length):
+                    weighted_sum[i] += inv_fpr * vec[i]
+
+            if total_inv_fpr > 0:
+                self.global_aggregated_vector = [w / total_inv_fpr for w in weighted_sum]
+            else:
+                self.global_aggregated_vector = list(next(iter(self.node_vectors.values())))
 
         print(f"[INTELLIGENCE SERVER] Aggregated {len(self.node_vectors)} node vectors (Inverse-FPR Weighted).")
         return self.global_aggregated_vector
@@ -84,15 +114,16 @@ if __name__ == "__main__":
     print("[TEST] Testing IntelligenceServer...")
     server = IntelligenceServer(k_rounds=K_ROUNDS)
 
-    v1 = np.ones(30) * 1.5
-    v2 = np.ones(30) * 2.5
+    v1 = [1.5] * 30 if not HAS_NUMPY else np.ones(30) * 1.5
+    v2 = [2.5] * 30 if not HAS_NUMPY else np.ones(30) * 2.5
 
     server.receive_weights("node-user-1", v1, fpr=0.10)
     server.receive_weights("node-server-1", v2, fpr=0.01)
 
     agg = server.aggregate()
-    print(f"Aggregated Vector Mean (Node 2 lower FPR should dominate): {np.mean(agg):.4f}")
+    mean_val = (sum(agg) / len(agg)) if not HAS_NUMPY else float(np.mean(agg))
+    print(f"Aggregated Vector Mean (Node 2 lower FPR should dominate): {mean_val:.4f}")
 
-    priority_vec = np.ones(30) * 5.0
+    priority_vec = [5.0] * 30 if not HAS_NUMPY else np.ones(30) * 5.0
     broadcast_out = server.priority_broadcast(priority_vec)
     print(f"Priority Broadcast Target Count: {len(broadcast_out)}")

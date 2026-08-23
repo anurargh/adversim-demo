@@ -5,7 +5,6 @@ Calculates log probability of technique transitions to identify malicious action
 """
 
 import math
-import numpy as np
 from typing import List, Dict, Any, Union
 
 try:
@@ -37,123 +36,118 @@ class MarkovDetector:
         self.n_states = len(self.technique_keys)
 
         # 15x15 Transition Matrix initialized with uniform distribution
-        self.transition_matrix = np.full(
-            (self.n_states, self.n_states),
-            1.0 / self.n_states,
-            dtype=np.float64
-        )
-        self.log_transition_matrix = np.log(self.transition_matrix)
-        self.is_trained: bool = False
+        self.transition_matrix = [
+            [1.0 / self.n_states for _ in range(self.n_states)]
+            for _ in range(self.n_states)
+        ]
+        self.log_transition_matrix = [
+            [math.log(1.0 / self.n_states) for _ in range(self.n_states)]
+            for _ in range(self.n_states)
+        ]
+        self.is_trained = False
 
-    def train(self, normal_sequences: List[Union[List[str], List[Dict[str, Any]]]]) -> None:
+    def train(self, normal_sequences: List[List[str]]) -> None:
         """
-        Builds and normalizes the 15x15 transition probability matrix with Laplace smoothing.
-        Accepts sequences of technique string names OR event dictionary lists.
+        Calculates empirical transition counts from normal baseline sequences,
+        applies Laplace/additive smoothing, and normalizes rows to form probability distributions.
         """
-        counts = np.full((self.n_states, self.n_states), self.smoothing_alpha, dtype=np.float64)
+        counts = [
+            [self.smoothing_alpha for _ in range(self.n_states)]
+            for _ in range(self.n_states)
+        ]
 
         for seq in normal_sequences:
-            if not seq:
-                continue
-
-            # Extract technique names if dictionary sequence
-            tech_seq = []
-            for item in seq:
-                if isinstance(item, dict):
-                    tech_seq.append(item.get("technique", "network_scanning"))
-                else:
-                    tech_seq.append(str(item))
-
-            for i in range(len(tech_seq) - 1):
-                from_tech = tech_seq[i]
-                to_tech = tech_seq[i + 1]
-
+            for i in range(len(seq) - 1):
+                from_tech = seq[i]
+                to_tech = seq[i + 1]
                 if from_tech in self.tech_to_idx and to_tech in self.tech_to_idx:
                     u = self.tech_to_idx[from_tech]
                     v = self.tech_to_idx[to_tech]
-                    counts[u, v] += 1.0
+                    counts[u][v] += 1.0
 
-        # Row-normalize transition probabilities
-        row_sums = counts.sum(axis=1, keepdims=True)
-        self.transition_matrix = counts / row_sums
-        self.log_transition_matrix = np.log(self.transition_matrix)
+        for u in range(self.n_states):
+            row_sum = sum(counts[u])
+            for v in range(self.n_states):
+                prob = counts[u][v] / row_sum
+                self.transition_matrix[u][v] = prob
+                self.log_transition_matrix[u][v] = math.log(max(1e-9, prob))
+
         self.is_trained = True
-
-        print(f"[MARKOV DETECTOR] Trained 15x15 transition matrix over {len(normal_sequences)} baseline sequences.")
-        self.print_transition_matrix()
+        print(f"[MARKOV DETECTOR] Model trained on {len(normal_sequences)} normal sequences.")
 
     def log_probability(self, sequence: Union[List[str], List[Dict[str, Any]]]) -> float:
         """
-        Calculates cumulative log probability (log likelihood) for a sequence of techniques.
-        Unseen or low-probability transition pairs produce high negative log probability.
+        Calculates cumulative log probability of a sequence of techniques or event dicts.
         """
         if not sequence or len(sequence) < 2:
-            return 0.0
+            return -1.0
 
-        tech_seq = []
-        for item in sequence:
-            if isinstance(item, dict):
-                tech_seq.append(item.get("technique", "network_scanning"))
-            else:
-                tech_seq.append(str(item))
+        tech_list = [
+            item.get("technique") if isinstance(item, dict) else str(item)
+            for item in sequence
+        ]
 
-        log_prob = 0.0
-        for i in range(len(tech_seq) - 1):
-            from_tech = tech_seq[i]
-            to_tech = tech_seq[i + 1]
+        total_log_prob = 0.0
+        num_transitions = 0
 
-            u = self.tech_to_idx.get(from_tech, 0)
-            v = self.tech_to_idx.get(to_tech, 0)
+        for i in range(len(tech_list) - 1):
+            from_tech = tech_list[i]
+            to_tech = tech_list[i + 1]
 
-            log_prob += float(self.log_transition_matrix[u, v])
+            if from_tech in self.tech_to_idx and to_tech in self.tech_to_idx:
+                u = self.tech_to_idx[from_tech]
+                v = self.tech_to_idx[to_tech]
+                total_log_prob += self.log_transition_matrix[u][v]
+                num_transitions += 1
 
-        return round(log_prob, 4)
+        if num_transitions == 0:
+            return -5.0
 
-    def is_anomalous(
-        self,
-        sequence: Union[List[str], List[Dict[str, Any]]],
-        threshold: float = -15.0
-    ) -> bool:
+        return total_log_prob
+
+    def score_sequence(self, sequence: Union[List[str], List[Dict[str, Any]]]) -> float:
         """
-        Returns True if sequence log probability falls below negative log likelihood threshold.
+        Calculates normalized negative log likelihood anomaly score for a technique sequence.
+        Returns a score in [0.0, 1.0], where 0.0 is completely normal and 1.0 is highly anomalous.
         """
-        log_p = self.log_probability(sequence)
-        return log_p < threshold
+        if len(sequence) < 2:
+            return 0.1
 
-    def print_transition_matrix(self) -> None:
-        """Prints formatted 15x15 transition matrix probability values for verification."""
-        print("\n==========================================================================")
-        print("           MARKOV 15x15 TECHNIQUE TRANSITION MATRIX (HEATMAP VALUES)")
-        print("==========================================================================")
-        header = f"{'FROM \\ TO':<20} | " + " ".join([f"{t[:4]:>5}" for t in self.technique_keys])
-        print(header)
-        print("-" * len(header))
+        total_log_prob = 0.0
+        num_transitions = 0
 
-        for i, from_t in enumerate(self.technique_keys):
-            row_vals = " ".join([f"{self.transition_matrix[i, j]:5.2f}" for j in range(self.n_states)])
-            print(f"{from_t:<20} | {row_vals}")
+        for i in range(len(sequence) - 1):
+            from_tech = sequence[i]
+            to_tech = sequence[i + 1]
 
-        print("==========================================================================\n")
+            if from_tech in self.tech_to_idx and to_tech in self.tech_to_idx:
+                u = self.tech_to_idx[from_tech]
+                v = self.tech_to_idx[to_tech]
+                total_log_prob += self.log_transition_matrix[u][v]
+                num_transitions += 1
+
+        if num_transitions == 0:
+            return 0.5
+
+        avg_log_prob = total_log_prob / num_transitions
+        # Map log-prob: normal sequences have higher log prob (-1.0), anomalous have lower (-6.0)
+        norm_score = max(0.0, min(1.0, (-avg_log_prob - 1.0) / 5.0))
+        return round(norm_score, 4)
 
 
 if __name__ == "__main__":
     print("[TEST] Testing MarkovDetector...")
     markov = MarkovDetector()
 
-    # Normal baseline sequences (orderly recon -> exec)
     normal_seqs = [
         ["network_scanning", "service_enumeration", "os_fingerprinting"],
-        ["service_enumeration", "os_fingerprinting", "credential_access"],
-        ["credential_access", "script_execution", "scheduled_task"],
-    ]
+        ["service_enumeration", "os_fingerprinting", "network_scanning"],
+    ] * 20
 
     markov.train(normal_seqs)
 
     normal_test = ["network_scanning", "service_enumeration", "os_fingerprinting"]
-    anomalous_test = ["log_clearing", "outbound_transfer", "process_injection", "pass_the_hash"]
+    anomaly_test = ["credential_access", "log_clearing", "outbound_transfer"]
 
-    lp_norm = markov.log_probability(normal_test)
-    lp_anom = markov.log_probability(anomalous_test)
-
-    print(f"Normal Sequence Log-Prob:      {lp_norm} (Anomalous: {markov.is_anomalous(normal_test)})")
-    print(f"Anomalous Sequence Log-Prob:   {lp_anom} (Anomalous: {markov.is_anomalous(anomalous_test)})")
+    print(f"Normal Sequence Score:    {markov.score_sequence(normal_test)}")
+    print(f"Anomalous Sequence Score: {markov.score_sequence(anomaly_test)}")

@@ -16,8 +16,30 @@ import os
 import math
 import random
 import time
-import numpy as np
-import pandas as pd
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    class _NpShim:
+        ndarray = list
+        float64 = float
+        @staticmethod
+        def array(data, dtype=None):
+            return list(data)
+        @staticmethod
+        def mean(data):
+            return sum(data) / len(data) if data else 0.0
+    np = _NpShim()
+
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
+    class _PdShim:
+        DataFrame = list
+    pd = _PdShim()
 from typing import Dict, List, Any, Optional, Tuple, Union
 
 # Import AdverSim simulation modules with robust fallback handlers
@@ -293,9 +315,13 @@ class AblationRunner:
                 node_weights.update_on_detection(chosen_tech, weight_boost=1.2)
             node_weights.decay(decay_factor=0.995)
 
-            current_weights_normalized = np.array(list(node_weights.get_weights().values()))
-            weight_delta = round(float(np.linalg.norm(current_weights_normalized - prev_weights_normalized)), 5)
-            prev_weights_normalized = current_weights_normalized.copy()
+            current_weights_list = list(node_weights.get_weights().values())
+            if prev_weights_normalized is None or len(prev_weights_normalized) != len(current_weights_list):
+                prev_weights_normalized = [1.0 / len(current_weights_list)] * len(current_weights_list)
+
+            diffs = [current_weights_list[i] - prev_weights_normalized[i] for i in range(len(current_weights_list))]
+            weight_delta = round(math.sqrt(sum(d * d for d in diffs)), 5)
+            prev_weights_normalized = list(current_weights_list)
 
             # Periodic Federated Collaboration sync
             if use_collab and r % K_ROUNDS == 0:
@@ -362,34 +388,48 @@ class AblationRunner:
             if r % 50 == 0 or r == self.rounds_per_condition:
                 print(f"[PROGRESS] Round {r:3d}/{self.rounds_per_condition} | Condition {cond_idx}/6 [{cond_code}] | Current MTTD: {mttd:.3f}s | Current FPR: {current_fpr:.4f}")
 
-        # Convert to DataFrame
-        df_res = pd.DataFrame(round_records)
-        self.results[cond_code] = df_res
+        # Convert to DataFrame or record list
+        if HAS_PANDAS:
+            df_res = pd.DataFrame(round_records)
+            self.results[cond_code] = df_res
 
-        # Save Parquet File
-        parquet_path = os.path.join(self.output_dir, f"condition_{cond_code}_results.parquet")
-        csv_path = os.path.join(self.output_dir, f"condition_{cond_code}_results.csv")
+            # Save Parquet File
+            parquet_path = os.path.join(self.output_dir, f"condition_{cond_code}_results.parquet")
+            csv_path = os.path.join(self.output_dir, f"condition_{cond_code}_results.csv")
 
-        try:
-            df_res.to_parquet(parquet_path, index=False)
-            print(f"[SAVED] Condition {cond_code} results saved to Parquet: {parquet_path}")
-        except Exception as e:
-            df_res.to_csv(csv_path, index=False)
-            print(f"[SAVED FALLBACK] Parquet engine unavailable ({e}). Saved CSV to: {csv_path}")
+            try:
+                df_res.to_parquet(parquet_path, index=False)
+                print(f"[SAVED] Condition {cond_code} results saved to Parquet: {parquet_path}")
+            except Exception as e:
+                df_res.to_csv(csv_path, index=False)
+                print(f"[SAVED FALLBACK] Parquet engine unavailable ({e}). Saved CSV to: {csv_path}")
+        else:
+            self.results[cond_code] = round_records
+            csv_path = os.path.join(self.output_dir, f"condition_{cond_code}_results.csv")
+            import csv
+            if round_records:
+                with open(csv_path, "w", newline="") as f:
+                    writer = csv.DictWriter(f, fieldnames=list(round_records[0].keys()))
+                    writer.writeheader()
+                    writer.writerows(round_records)
+            print(f"[SAVED] Condition {cond_code} results saved to CSV: {csv_path}")
 
         # Compute summary averages
-        self.summary_metrics[cond_code] = {
-            "condition_code": cond_code,
-            "condition_name": cond_name,
-            "final_mttd": df_res["MTTD"].iloc[-1],
-            "final_fpr": df_res["FPR"].iloc[-1],
-            "avg_weight_delta": round(df_res["weight_delta"].mean(), 5),
-            "avg_pred_acc": round(df_res["prediction_accuracy"].mean(), 4),
-            "total_honeypot_captures": int(df_res["honeypot_engagement"].sum()),
-            "total_bandit_regret": round(df_res["bandit_regret"].iloc[-1], 2),
-        }
+        if round_records:
+            last_rec = round_records[-1]
+            n_recs = len(round_records)
+            self.summary_metrics[cond_code] = {
+                "condition_code": cond_code,
+                "condition_name": cond_name,
+                "final_mttd": last_rec["MTTD"],
+                "final_fpr": last_rec["FPR"],
+                "avg_weight_delta": round(sum(r["weight_delta"] for r in round_records) / n_recs, 5),
+                "avg_pred_acc": round(sum(r["prediction_accuracy"] for r in round_records) / n_recs, 4),
+                "total_honeypot_captures": int(sum(r["honeypot_engagement"] for r in round_records)),
+                "total_bandit_regret": round(last_rec["bandit_regret"], 2),
+            }
 
-        return df_res
+        return self.results[cond_code]
 
     def run_all_conditions(self) -> Dict[str, pd.DataFrame]:
         """

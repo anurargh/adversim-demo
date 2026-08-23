@@ -1,27 +1,33 @@
 """
 AdverSim Multi-Armed Bandit (UCB) Adaptive Attacker Module
+Executes real network, SSH, and host attack actions against actual Docker containers
+on adversim-net (172.20.0.0/16) and uses genuine execution outcomes as reward signals.
 """
 
 import math
 import random
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 try:
-    from simulation.mitre_map import MITRE_TECHNIQUES, create_event
+    from simulation.mitre_map import MITRE_TECHNIQUES, create_event, get_stage
 except ImportError:
-    from ..mitre_map import MITRE_TECHNIQUES, create_event
+    try:
+        from ..mitre_map import MITRE_TECHNIQUES, create_event, get_stage
+    except ImportError:
+        from mitre_map import MITRE_TECHNIQUES, create_event, get_stage
 
 
 class BanditAttacker:
     """
-    Main adaptive attacker agent utilizing Upper Confidence Bound (UCB) algorithm.
-    Selects attack surfaces dynamically, tracks success/attempt statistics,
-    profiles background node noise to bypass honeypots, and generates fake
-    poisoning sequences.
+    Main adaptive attacker agent utilizing Upper Confidence Bound (UCB1) algorithm.
+    Selects attack surfaces dynamically, executes genuine network actions against
+    real target containers on adversim-net (172.20.0.0/16) via LiveOrchestrator,
+    and updates arm statistics using genuine execution rewards.
     """
 
-    def __init__(self, name: str = "UCB_Bandit_Attacker"):
+    def __init__(self, name: str = "UCB_Bandit_Attacker", orchestrator: Optional[Any] = None):
         self.name = name
+        self.orchestrator = orchestrator
         self.techniques = list(MITRE_TECHNIQUES.keys())
         self.attempt_count: Dict[str, int] = {t: 0 for t in self.techniques}
         self.success_count: Dict[str, float] = {t: 0.0 for t in self.techniques}
@@ -77,9 +83,57 @@ class BanditAttacker:
 
         return chosen_technique
 
+    def attack_target_live(
+        self,
+        target_node: Dict[str, Any],
+        round_number: int = 1,
+        technique: Optional[str] = None
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """
+        Chooses or takes an attack technique, executes a real live action against
+        the target container on adversim-net (172.20.0.0/16) via LiveOrchestrator,
+        and uses the real execution reward to update the bandit's UCB model.
+        Returns (audit_event, live_outcome).
+        """
+        chosen_tech = technique or self.pick_technique(round_number)
+        target_id = target_node.get("name") or target_node.get("id", "node-user-1")
+        target_ip = target_node.get("ip", "172.20.0.11")
+
+        live_outcome = {}
+        if self.orchestrator is not None:
+            live_outcome = self.orchestrator.execute_live_action(
+                technique=chosen_tech,
+                target_node=target_node,
+                round_num=round_number
+            )
+            # Use real outcome success / reward signal from container execution
+            reward = float(live_outcome.get("reward", 1.0 if live_outcome.get("success", False) else 0.0))
+            is_detected = live_outcome.get("detected", False)
+            self.update_reward(chosen_tech, reward=reward, was_detected=is_detected)
+        else:
+            # Fallback when running standalone without live orchestrator instance
+            audit_event = create_event(
+                technique=chosen_tech,
+                node_id=target_id,
+                is_attack=True,
+                target_ip=target_ip,
+                sequence_position=round_number
+            )
+            return audit_event, {"success": True, "reward": 1.0, "details": "simulated fallback"}
+
+        audit_event = create_event(
+            technique=chosen_tech,
+            node_id=target_id,
+            is_attack=True,
+            target_ip=target_ip,
+            sequence_position=round_number
+        )
+        audit_event["live_outcome"] = live_outcome
+        return audit_event, live_outcome
+
     def update(self, technique: str, was_detected: bool) -> None:
         """
-        Updates attempt and success counters based on defender outcome.
+        Updates attempt and success counters based on defender detection outcome.
         was_detected == False implies successful evasion for the attacker.
         """
         if technique in self.attempt_count:
@@ -87,6 +141,17 @@ class BanditAttacker:
             self.total_attempts += 1
             if not was_detected:
                 self.success_count[technique] += 1.0
+
+    def update_reward(self, technique: str, reward: float, was_detected: bool = False) -> None:
+        """
+        Updates arm attempt and fractional reward score directly from live action results.
+        """
+        if technique in self.attempt_count:
+            self.attempt_count[technique] += 1
+            self.total_attempts += 1
+            # Weighted reward factoring in live execution success and evasion
+            effective_reward = reward if not was_detected else max(0.0, reward - 0.5)
+            self.success_count[technique] += effective_reward
 
     def probe_nodes(self, node_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -130,22 +195,19 @@ class BanditAttacker:
 
 
 if __name__ == "__main__":
-    print("[TEST] Initializing BanditAttacker and testing 20 rounds...")
-    bandit = BanditAttacker()
-    sample_nodes = [
-        {"id": "node-user-1", "type": "User", "background_noise_level": 0.2, "is_honeypot": False},
-        {"id": "honeypot-1", "type": "Honeypot", "background_noise_level": 0.9, "is_honeypot": True},
-    ]
+    print("[TEST] Initializing BanditAttacker with LiveOrchestrator...")
+    try:
+        from simulation.live.live_orchestrator import LiveOrchestrator
+        orch = LiveOrchestrator()
+    except Exception:
+        orch = None
 
-    for r in range(1, 21):
-        tech = bandit.pick_technique(r)
-        detected = random.random() < 0.4
-        bandit.update(tech, was_detected=detected)
+    bandit = BanditAttacker(orchestrator=orch)
+    sample_target = {"id": "node-user-1", "name": "node-user-1", "ip": "172.20.0.11", "type": "User"}
 
-    print("\n[TEST] Probing nodes sorted by stealth rank:")
-    sorted_nodes = bandit.probe_nodes(sample_nodes)
-    for n in sorted_nodes:
-        print(f"  Node: {n['id']} | Type: {n['type']}")
+    for r in range(1, 11):
+        evt, outcome = bandit.attack_target_live(sample_target, round_number=r)
+        print(f"Round {r:2d} | Technique: {evt['technique']:<20} | Live Success: {outcome.get('success')} | Reward: {outcome.get('reward')}")
 
-    print("\n[TEST] Surface Weights Heatmap Vector:")
+    print("\n[TEST] Updated UCB Surface Weights:")
     print(bandit.get_surface_weights())

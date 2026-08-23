@@ -119,15 +119,35 @@ export default function App() {
           try {
             const data = JSON.parse(event.data);
             if (data.type === 'ROUND_TICK') {
-              const nextState = engine.stepRound();
-              setSimState({ ...nextState });
+              if (data.state) {
+                engine.setState(data.state);
+                setSimState({ ...data.state });
+              } else {
+                const nextState = engine.stepRound();
+                setSimState({ ...nextState });
+              }
               soundFx.playTick();
+            } else if (data.type === 'STATE_UPDATE' || data.type === 'INIT') {
+              if (data.state) {
+                engine.setState(data.state);
+                setSimState({ ...data.state });
+              }
             } else if (data.type === 'STATUS') {
-              engine.setState({ isRunning: data.running });
-              setSimState({ ...engine.getState() });
+              if (data.state) {
+                engine.setState(data.state);
+                setSimState({ ...data.state });
+              } else {
+                engine.setState({ isRunning: data.running });
+                setSimState({ ...engine.getState() });
+              }
             } else if (data.type === 'RESET') {
-              engine.setState({ isRunning: true, currentRound: 0, alerts: [] });
-              setSimState({ ...engine.getState() });
+              if (data.state) {
+                engine.setState(data.state);
+                setSimState({ ...data.state });
+              } else {
+                engine.setState({ isRunning: true, currentRound: 0, alerts: [] });
+                setSimState({ ...engine.getState() });
+              }
             }
           } catch (e) {}
         };
@@ -162,9 +182,32 @@ export default function App() {
           try {
             const data = JSON.parse(event.data);
             if (data.type === 'ROUND_TICK') {
-              const nextState = engine.stepRound();
-              setSimState({ ...nextState });
+              if (data.state) {
+                engine.setState(data.state);
+                setSimState({ ...data.state });
+              } else {
+                const nextState = engine.stepRound();
+                setSimState({ ...nextState });
+              }
               soundFx.playTick();
+            } else if (data.type === 'STATE_UPDATE' || data.type === 'INIT') {
+              if (data.state) {
+                engine.setState(data.state);
+                setSimState({ ...data.state });
+              }
+            } else if (data.type === 'STATUS') {
+              if (data.state) {
+                engine.setState(data.state);
+                setSimState({ ...data.state });
+              } else {
+                engine.setState({ isRunning: data.running });
+                setSimState({ ...engine.getState() });
+              }
+            } else if (data.type === 'RESET') {
+              if (data.state) {
+                engine.setState(data.state);
+                setSimState({ ...data.state });
+              }
             }
           } catch (e) {}
         };
@@ -202,10 +245,20 @@ export default function App() {
   }, [simState.isRunning, simState.speedMs, engine, wsConnected]);
 
   // Step 1 round manually
-  const handleStepOnce = () => {
-    const nextState = engine.stepRound();
-    setSimState({ ...nextState });
-    soundFx.playTick();
+  const handleStepOnce = async () => {
+    try {
+      fetch('/api/step', { method: 'POST' }).catch(() =>
+        fetch('http://localhost:8000/api/step', { method: 'POST' })
+      );
+    } catch (e) {}
+
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ action: 'step' }));
+    } else {
+      const nextState = engine.stepRound();
+      setSimState({ ...nextState });
+      soundFx.playTick();
+    }
   };
 
   // Speed adjustments
@@ -282,19 +335,56 @@ export default function App() {
     }
   };
 
-  const handleConditionChange = (condId: ConditionId) => {
+  const handleConditionChange = async (condId: ConditionId) => {
     engine.setState({ activeCondition: condId });
     setSimState({ ...engine.getState() });
+
+    try {
+      fetch('/api/condition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conditionId: condId }),
+      }).catch(() =>
+        fetch('http://localhost:8000/api/condition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conditionId: condId }),
+        })
+      );
+    } catch (e) {}
+
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ action: 'condition', conditionId: condId }));
+    }
   };
 
   // Attack Injection Trigger
-  const handleInjectAttack = (type: 'apt29' | 'pth' | 'exfil' | 'decoy_probe') => {
-    const nextState = engine.injectAttackScenario(type);
-    setSimState({ ...nextState });
+  const handleInjectAttack = async (type: 'apt29' | 'pth' | 'exfil' | 'decoy_probe') => {
     if (type === 'decoy_probe') {
       soundFx.playHoneypotTrap();
     } else {
       soundFx.playAlert();
+    }
+
+    try {
+      fetch('/api/inject_attack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
+      }).catch(() =>
+        fetch('http://localhost:8000/api/inject_attack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type }),
+        })
+      );
+    } catch (e) {}
+
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ action: 'inject_attack', attackType: type }));
+    } else {
+      const nextState = engine.injectAttackScenario(type);
+      setSimState({ ...nextState });
     }
   };
 

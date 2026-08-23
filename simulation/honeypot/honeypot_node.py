@@ -5,8 +5,20 @@ validates captured sequences using ConsistencyChecker, and triggers Intelligence
 """
 
 import random
-import numpy as np
 from typing import List, Dict, Any, Optional
+
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+    class _NpShim:
+        ndarray = list
+        float64 = float
+        @staticmethod
+        def array(data, dtype=None):
+            return list(data)
+    np = _NpShim()
 
 try:
     from simulation.honeypot.consistency_checker import ConsistencyChecker

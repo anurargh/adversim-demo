@@ -1,30 +1,9 @@
 """
-FastAPI Backend Main API Module
+AdverSim API Forwarder
+Forwards to canonical simulation.api.main
 """
-import asyncio
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict, Any
+from simulation.api.main import app, run_standalone_server, live_engine
+from simulation.api.websocket_manager import manager
 
-app = FastAPI(title="AdverSim API", description="Cyber Defense Simulation Framework Backend")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/api/health")
-async def health_check():
-    return {"status": "ok", "app": "AdverSim Cyber Defense Simulator", "version": "1.0.0"}
-
-@app.get("/api/sim/state")
-async def get_simulation_state():
-    return {
-        "status": "active",
-        "current_round": 10,
-        "nodes_count": 7,
-        "active_condition": "F"
-    }
+if __name__ == "__main__":
+    run_standalone_server()
