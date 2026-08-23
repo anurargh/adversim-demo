@@ -122,42 +122,41 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
   const panelContent = (
     <div
       ref={containerRef}
-      className={`cockpit-panel rounded-xl p-4 flex flex-col gap-3 text-xs font-mono transition-all duration-300 ${
+      className={`bg-[#0b1120] border border-slate-800 rounded-lg p-4 flex flex-col gap-3 text-xs font-mono transition-all duration-300 ${
         isFullscreen
           ? 'fixed inset-0 z-[999999] bg-[#07090e] p-4 sm:p-6 overflow-y-auto shadow-2xl w-screen h-screen justify-between'
           : ''
       }`}
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.08] pb-2.5 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2.5 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-live-blip" />
-            <h3 className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-bold uppercase tracking-widest text-slate-100 flex items-center gap-1.5`}>
-              Topological Airworthiness & Efficacy Scorecard
+            <h3 className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-bold uppercase tracking-wider text-slate-100 flex items-center gap-1.5`}>
+              Topology & Resilience Scorecard
             </h3>
-            <span className="px-1.5 py-0.5 rounded font-bold text-[9px] bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-              REAL-TIME TOPOLOGY AUDIT
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-900 text-slate-400 border border-slate-800">
+              Topology Audit
             </span>
           </div>
           <p className="text-slate-400 text-[11px] mt-0.5">
-            Continuous verification of network resilience against multi-armed bandit exploration.
+            Verification of network topology resilience against multi-armed bandit exploration.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 font-bold ${gradeColor}`}>
-            <span className="text-sm tracking-wider">GRADE {grade}</span>
-            <span className="text-[10px] text-slate-300">({score}/100 SCORE)</span>
+          <div className={`px-3 py-1 rounded border flex items-center gap-2 font-semibold ${gradeColor}`}>
+            <span className="text-sm tracking-wide">GRADE {grade}</span>
+            <span className="text-[10px] text-slate-300 font-normal">({score}/100)</span>
           </div>
 
           {/* Expand / Minimize Button */}
           <button
             onClick={toggleFullscreen}
-            className={`p-1.5 rounded-lg border transition-all flex items-center justify-center ${
+            className={`p-1.5 rounded border transition-colors flex items-center justify-center ${
               isFullscreen
-                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/30'
-                : 'bg-slate-900 hover:bg-slate-800 text-cyan-300 border-cyan-500/30 hover:border-cyan-500/60'
+                ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-800'
             }`}
             title={isFullscreen ? 'Exit Full Screen (ESC)' : 'Expand Scorecard to Full Screen'}
             aria-label={isFullscreen ? 'Exit Full Screen' : 'Expand Scorecard to Full Screen'}
@@ -171,64 +170,64 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
         </div>
       </div>
 
-      {/* 4 Kinetic Gauges */}
+      {/* 4 Stat Cards */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 ${isFullscreen ? 'my-2' : ''}`}>
-        <div className="bg-slate-950/80 border border-white/[0.06] p-3 rounded-lg flex flex-col justify-between">
+        <div className="bg-slate-950 border border-slate-800 p-3 rounded flex flex-col justify-between">
           <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
             <Share2 className="w-3.5 h-3.5 text-cyan-400" />
             Sharing Density
           </span>
           <div className="mt-1.5 flex items-baseline justify-between">
-            <span className="text-base font-bold text-slate-100">
+            <span className="text-base font-semibold text-slate-100">
               {edges.length} <span className="text-[10px] text-slate-500 font-normal">Links</span>
             </span>
-            <span className="text-xs font-bold text-cyan-300">
+            <span className="text-xs font-semibold text-cyan-400">
               {(sharingDensityRatio * 100).toFixed(0)}% Mesh
             </span>
           </div>
         </div>
 
-        <div className="bg-slate-950/80 border border-white/[0.06] p-3 rounded-lg flex flex-col justify-between">
+        <div className="bg-slate-950 border border-slate-800 p-3 rounded flex flex-col justify-between">
           <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
             <Target className="w-3.5 h-3.5 text-teal-400" />
-            Deception Ratio
+            Decoy Ratio
           </span>
           <div className="mt-1.5 flex items-baseline justify-between">
-            <span className="text-base font-bold text-slate-100">
+            <span className="text-base font-semibold text-slate-100">
               {honeypots.length} <span className="text-[10px] text-slate-500 font-normal">Decoys</span>
             </span>
-            <span className="text-xs font-bold text-teal-300">
+            <span className="text-xs font-semibold text-teal-400">
               {(honeypotRatio * 100).toFixed(0)}% Density
             </span>
           </div>
         </div>
 
-        <div className="bg-slate-950/80 border border-white/[0.06] p-3 rounded-lg flex flex-col justify-between">
+        <div className="bg-slate-950 border border-slate-800 p-3 rounded flex flex-col justify-between">
           <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
-            <Cpu className="w-3.5 h-3.5 text-purple-400" />
+            <Cpu className="w-3.5 h-3.5 text-cyan-400" />
             Detection Velocity
           </span>
           <div className="mt-1.5 flex items-baseline justify-between">
-            <span className="text-base font-bold text-slate-100">
+            <span className="text-base font-semibold text-slate-100">
               {mttd.toFixed(1)} <span className="text-[10px] text-slate-500 font-normal">s</span>
             </span>
-            <span className={`text-xs font-bold ${mttd <= 40 ? 'text-emerald-300' : 'text-amber-300'}`}>
-              {mttd <= 40 ? 'OPTIMAL' : 'DELAYED'}
+            <span className={`text-xs font-semibold ${mttd <= 40 ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {mttd <= 40 ? 'Optimal' : 'Delayed'}
             </span>
           </div>
         </div>
 
-        <div className="bg-slate-950/80 border border-white/[0.06] p-3 rounded-lg flex flex-col justify-between">
+        <div className="bg-slate-950 border border-slate-800 p-3 rounded flex flex-col justify-between">
           <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            Containment Rate
+            Prediction Accuracy
           </span>
           <div className="mt-1.5 flex items-baseline justify-between">
-            <span className="text-base font-bold text-slate-100">
+            <span className="text-base font-semibold text-slate-100">
               {(detectionAccuracy * 100).toFixed(0)}%
             </span>
-            <span className="text-xs font-bold text-emerald-300">
-              PRE-HARDENED
+            <span className="text-xs font-semibold text-emerald-400">
+              Pre-Hardened
             </span>
           </div>
         </div>
@@ -237,8 +236,8 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
       {/* Strengths & Vulnerabilities Diagnostic Strip */}
       <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${isFullscreen ? 'flex-1 my-2' : ''}`}>
         {/* Strengths */}
-        <div className="bg-slate-950/90 border border-emerald-500/20 rounded-lg p-3 space-y-2 flex flex-col">
-          <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 border-b border-emerald-500/20 pb-1.5">
+        <div className="bg-slate-950 border border-slate-800 rounded p-3 space-y-2 flex flex-col">
+          <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
             <CheckCircle2 className="w-4 h-4" />
             Defensive Strengths ({strengths.length})
           </div>
@@ -248,7 +247,7 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
             <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
               {strengths.map((s, idx) => (
                 <div key={idx} className="flex items-start gap-2 text-[11px] text-slate-300">
-                  <span className="text-emerald-400 font-bold">›</span>
+                  <span className="text-emerald-400 font-semibold">›</span>
                   <span>{s}</span>
                 </div>
               ))}
@@ -257,8 +256,8 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
         </div>
 
         {/* Vulnerabilities */}
-        <div className="bg-slate-950/90 border border-rose-500/20 rounded-lg p-3 space-y-2 flex flex-col">
-          <div className="text-xs font-bold text-rose-400 flex items-center gap-1.5 border-b border-rose-500/20 pb-1.5">
+        <div className="bg-slate-950 border border-slate-800 rounded p-3 space-y-2 flex flex-col">
+          <div className="text-xs font-semibold text-rose-400 flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
             <XCircle className="w-4 h-4" />
             Structural Vulnerabilities ({flaws.length})
           </div>
@@ -268,7 +267,7 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
             <div className="space-y-1.5 overflow-y-auto flex-1 pr-1">
               {flaws.map((f, idx) => (
                 <div key={idx} className="flex items-start gap-2 text-[11px] text-slate-300">
-                  <span className="text-rose-400 font-bold">›</span>
+                  <span className="text-rose-400 font-semibold">›</span>
                   <span>{f}</span>
                 </div>
               ))}
@@ -277,11 +276,11 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
         </div>
       </div>
 
-      {/* Footer Instrument Status Strip */}
-      <div className="border-t border-white/[0.08] pt-2 flex items-center justify-between text-[10px] font-mono text-slate-400">
+      {/* Footer Status Strip */}
+      <div className="border-t border-slate-800 pt-2 flex items-center justify-between text-[10px] font-mono text-slate-400">
         <span className="flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
-          Network Topology Assessment Scorecard
+          Topology Scorecard
         </span>
         <span className="text-slate-500">Security Invariant Checks Passed</span>
       </div>

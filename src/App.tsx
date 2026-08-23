@@ -386,219 +386,222 @@ export default function App() {
   const mttdA = latestMttd?.ConditionA || 140;
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-slate-100 font-mono p-3 md:p-5 space-y-4 telemetry-grid">
-      {/* 1. MASTER COCKPIT HEADER & FLIGHT RECORDER */}
-      <header className="cockpit-panel rounded-xl p-3 md:p-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+    <div className="min-h-screen bg-[#07090e] text-slate-100 font-mono p-3 md:p-5 space-y-4">
+      {/* 1. COMPACT HEADER */}
+      <header className="bg-[#0b1120] border border-slate-800 rounded-lg p-3 md:p-3.5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
         {/* Left System Identity */}
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-cyan-950/80 border border-cyan-500/40 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/10">
-            <Activity className="w-5 h-5 text-cyan-400 animate-pulse" />
+          <div className="p-2 bg-slate-900 border border-slate-800 rounded-md flex items-center justify-center">
+            <Activity className="w-4 h-4 text-cyan-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-sm font-bold tracking-widest text-slate-100 uppercase">
-                ADVERSIM // MK-IV TELEMETRY
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-bold tracking-wider text-slate-100 uppercase">
+                AdverSim
               </h1>
-              <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                LIVE CYBER-DEFENSE DECK
-              </span>
+              <span className="text-[10px] text-slate-400">v4.0</span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Kinetic Multi-Agent Simulation Engine & Collaborative Threat Orchestrator
+              Multi-agent collaborative cyber defense simulation
             </p>
           </div>
         </div>
 
-        {/* Center Telemetry Flight Status Strip */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* WebSocket Channel */}
-          <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-bold ${
-              wsConnected
-                ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30'
-                : 'bg-slate-900 text-slate-400 border-white/[0.08]'
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
-            <span>{wsStatusMessage}</span>
-          </div>
+        {/* Center Single-Line Status Strip */}
+        <div className="flex items-center gap-3 px-3 py-1.5 rounded bg-slate-950 border border-slate-800/80 text-[11px] flex-wrap">
+          {/* Connection Status */}
+          <span className="flex items-center gap-1.5 text-slate-400">
+            <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-cyan-400' : 'bg-slate-600'}`} />
+            <span>{wsConnected ? 'Connected' : 'Local Engine'}</span>
+          </span>
 
-          {/* Round / Tick Clock */}
-          <div className="flex items-center bg-slate-950 border border-white/[0.08] rounded-lg px-2.5 py-1 gap-1.5 text-[11px]">
-            <Clock className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-slate-400">TICK:</span>
-            <span className="text-cyan-300 font-bold tracking-wider">
+          <span className="text-slate-800">|</span>
+
+          {/* Round Clock */}
+          <span className="flex items-center gap-1.5 text-slate-400">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span>Round:</span>
+            <span className="text-cyan-400 font-bold tracking-wider">
               T+{String(simState.currentRound).padStart(4, '0')}
             </span>
-          </div>
+          </span>
 
-          {/* Defcon Fleet Lamp */}
-          <div className={`px-2.5 py-1 rounded-lg border font-bold text-[10px] flex items-center gap-1.5 ${defconColor}`}>
+          <span className="text-slate-800">|</span>
+
+          {/* Threat Level */}
+          <span className={`flex items-center gap-1.5 font-medium ${
+            nodesUnderAttack > 0
+              ? 'text-rose-400'
+              : simState.alerts.length > 0 && simState.currentRound - (simState.alerts[0]?.round || 0) < 3
+              ? 'text-amber-400'
+              : 'text-slate-300'
+          }`}>
             <ShieldAlert className="w-3.5 h-3.5" />
-            <span>{defconLabel}</span>
-          </div>
+            <span>Threat Level:</span>
+            <span className="font-bold">
+              {nodesUnderAttack > 0
+                ? `Critical (${nodesUnderAttack} under attack)`
+                : simState.alerts.length > 0 && simState.currentRound - (simState.alerts[0]?.round || 0) < 3
+                ? 'Elevated'
+                : 'Nominal'}
+            </span>
+          </span>
         </div>
 
-        {/* Right Tactical Controls & Speed Dial */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Sound FX Toggle */}
+        {/* Right Unified Control Cluster */}
+        <div className="flex items-center bg-slate-950 border border-slate-800 rounded p-1 text-xs gap-1 flex-wrap">
+          {/* Run / Pause */}
           <button
-            onClick={toggleSound}
-            className={`p-1.5 rounded-lg border transition-colors ${
-              soundEnabled
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm shadow-cyan-500/30'
-                : 'bg-slate-900 text-slate-500 border-white/[0.08] hover:text-slate-300'
+            onClick={simState.isRunning ? handleStop : handleStart}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold transition-colors ${
+              simState.isRunning
+                ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
             }`}
-            title={soundEnabled ? 'Audio Telemetry ON' : 'Audio Telemetry MUTED'}
           >
-            {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-cyan-400" /> : <VolumeX className="w-3.5 h-3.5" />}
+            {simState.isRunning ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+            {simState.isRunning ? 'Pause' : 'Start'}
           </button>
-
-          {/* Simulation Speed Toggles */}
-          <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-white/[0.08] text-[10px]">
-            <button
-              onClick={() => handleSpeedChange(250)}
-              className={`px-1.5 py-1 rounded transition-colors ${simState.speedMs === 250 ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-              title="Fast 250ms cadence"
-            >
-              4×
-            </button>
-            <button
-              onClick={() => handleSpeedChange(500)}
-              className={`px-1.5 py-1 rounded transition-colors ${simState.speedMs === 500 ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-              title="2x cadence"
-            >
-              2×
-            </button>
-            <button
-              onClick={() => handleSpeedChange(1000)}
-              className={`px-1.5 py-1 rounded transition-colors ${simState.speedMs === 1000 ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-              title="Standard 1000ms cadence"
-            >
-              1×
-            </button>
-            <button
-              onClick={() => handleSpeedChange(2000)}
-              className={`px-1.5 py-1 rounded transition-colors ${simState.speedMs === 2000 ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-400 hover:text-slate-200'}`}
-              title="Slow 2000ms cadence"
-            >
-              0.5×
-            </button>
-          </div>
 
           {/* Step +1 */}
           <button
             onClick={handleStepOnce}
-            className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/[0.08] rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
-            title="Step forward by 1 round"
+            className="px-2 py-1 text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded text-xs font-medium transition-colors"
+            title="Step forward 1 round"
           >
-            <FastForward className="w-3 h-3" /> STEP
+            Step
           </button>
 
-          {/* Run / Halt */}
-          <button
-            onClick={simState.isRunning ? handleStop : handleStart}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              simState.isRunning
-                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20'
-                : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/20'
-            }`}
-          >
-            {simState.isRunning ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-            {simState.isRunning ? 'HALT' : 'ENGAGE'}
-          </button>
+          <div className="h-4 w-px bg-slate-800 mx-0.5" />
+
+          {/* Speed Toggles */}
+          <div className="flex items-center text-[10px]">
+            {[
+              { label: '0.5×', val: 2000 },
+              { label: '1×', val: 1000 },
+              { label: '2×', val: 500 },
+              { label: '4×', val: 250 },
+            ].map((spd) => (
+              <button
+                key={spd.val}
+                onClick={() => handleSpeedChange(spd.val)}
+                className={`px-1.5 py-1 rounded transition-colors ${
+                  simState.speedMs === spd.val
+                    ? 'text-cyan-400 font-bold bg-slate-900'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {spd.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-4 w-px bg-slate-800 mx-0.5" />
 
           {/* Reset */}
           <button
             onClick={handleReset}
-            className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/[0.08] rounded-lg transition-colors"
-            title="Reset telemetry buffers"
+            className="p-1 text-slate-500 hover:text-slate-300 hover:bg-slate-900 rounded transition-colors"
+            title="Reset simulation"
           >
             <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Sound FX Toggle */}
+          <button
+            onClick={toggleSound}
+            className={`p-1 rounded transition-colors ${
+              soundEnabled
+                ? 'text-cyan-400 bg-slate-900'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+            title={soundEnabled ? 'Audio Muted' : 'Audio Enabled'}
+          >
+            {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
           </button>
         </div>
       </header>
 
-      {/* 2. REAL-TIME KPI HUD AVIONICS STRIP */}
+      {/* 2. RESTRAINED 5 KPI TILES */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-        <div className="cockpit-panel rounded-xl p-2.5 flex flex-col justify-between">
-          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1">
-            <Activity className="w-3 h-3 text-cyan-400" />
-            MTTD Containment Needle
+        <div className="bg-[#0b1120] border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            Time to Detect (MTTD)
           </span>
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-lg font-bold text-cyan-300">{mttdF.toFixed(1)}s</span>
-            <span className="text-[10px] text-emerald-400 font-bold">
-              ▲ -{(((mttdA - mttdF) / mttdA) * 100).toFixed(0)}% vs Baseline
+            <span className="text-lg font-bold text-cyan-400">{mttdF.toFixed(1)}s</span>
+            <span className="text-[10px] text-slate-400">
+              -{(((mttdA - mttdF) / mttdA) * 100).toFixed(0)}% vs baseline
             </span>
           </div>
         </div>
 
-        <div className="cockpit-panel rounded-xl p-2.5 flex flex-col justify-between">
-          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1">
-            <Cpu className="w-3 h-3 text-amber-400" />
-            Bandit Max Regret
+        <div className="bg-[#0b1120] border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
+            <Cpu className="w-3.5 h-3.5 text-slate-400" />
+            Max UCB Regret
           </span>
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-lg font-bold text-amber-300">
+            <span className="text-lg font-bold text-slate-100">
               {Math.max(...simState.ucbStats.map((s) => s.ucbScore)).toFixed(2)}
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">15 Surface Arms</span>
+            <span className="text-[10px] text-slate-400">15 techniques</span>
           </div>
         </div>
 
-        <div className="cockpit-panel rounded-xl p-2.5 flex flex-col justify-between">
-          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1">
-            <Share2 className="w-3 h-3 text-sky-400" />
-            Mesh Sharing Ratio
+        <div className="bg-[#0b1120] border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
+            <Share2 className="w-3.5 h-3.5 text-slate-400" />
+            Mesh Connections
           </span>
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-lg font-bold text-sky-300">{simState.edges.length} Links</span>
-            <span className="text-[10px] text-cyan-400 font-bold">P2P Telemetry Active</span>
+            <span className="text-lg font-bold text-slate-100">{simState.edges.length} Links</span>
+            <span className="text-[10px] text-slate-400">Peer sharing</span>
           </div>
         </div>
 
-        <div className="cockpit-panel rounded-xl p-2.5 flex flex-col justify-between">
-          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1">
-            <Target className="w-3 h-3 text-teal-400" />
-            Decoy Honeypots
+        <div className="bg-[#0b1120] border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-slate-400" />
+            Decoy Nodes
           </span>
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-lg font-bold text-teal-300">
+            <span className="text-lg font-bold text-slate-100">
               {simState.nodes.filter((n) => n.isHoneypot).length} Active
             </span>
-            <span className="text-[10px] text-teal-400 font-bold">Poisoning Filter ON</span>
+            <span className="text-[10px] text-slate-400">Poisoning active</span>
           </div>
         </div>
 
-        <div className="cockpit-panel rounded-xl p-2.5 flex flex-col justify-between col-span-2 sm:col-span-1">
-          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1">
-            <Radio className="w-3 h-3 text-purple-400" />
-            Total Threat Detections
+        <div className="bg-[#0b1120] border border-slate-800 rounded-lg p-3 flex flex-col justify-between col-span-2 sm:col-span-1">
+          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
+            <ShieldAlert className="w-3.5 h-3.5 text-slate-400" />
+            Total Alerts
           </span>
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-lg font-bold text-purple-300">{simState.totalAlertCount}</span>
-            <span className="text-[10px] text-slate-400 font-mono">{simState.alerts.length} In Buffer</span>
+            <span className="text-lg font-bold text-slate-100">{simState.totalAlertCount}</span>
+            <span className="text-[10px] text-slate-400">{simState.alerts.length} recent</span>
           </div>
         </div>
       </div>
 
-      {/* 3. TACTICAL MISSION TABS NAVIGATION BAR */}
-      <div className="cockpit-panel rounded-xl p-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+      {/* 3. TACTICAL NAVIGATION BAR */}
+      <div className="bg-[#0b1120] border border-slate-800 rounded-lg p-1.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-mono">
+        <div className="flex items-center gap-1 overflow-x-auto text-xs font-mono">
           <button
             onClick={() => setActiveTab('soc')}
-            className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded font-medium flex items-center gap-2 transition-colors whitespace-nowrap ${
               activeTab === 'soc'
-                ? 'bg-cyan-500 text-slate-950 border border-cyan-400 shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-950/80 text-slate-400 hover:text-slate-200 border border-white/[0.08]'
+                ? 'bg-slate-800 text-cyan-400 border border-slate-700 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
             }`}
           >
             <Radar className="w-4 h-4" />
-            <span>Tactical SOC & Topology</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-              activeTab === 'soc' ? 'bg-slate-950 text-cyan-300' : 'bg-slate-900 text-slate-400'
+            <span>Topology & Threat Map</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded font-normal ${
+              activeTab === 'soc' ? 'bg-slate-900 text-cyan-400' : 'text-slate-500'
             }`}>
               {simState.nodes.length} Nodes
             </span>
@@ -606,16 +609,16 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('forecasting')}
-            className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded font-medium flex items-center gap-2 transition-colors whitespace-nowrap ${
               activeTab === 'forecasting'
-                ? 'bg-cyan-500 text-slate-950 border border-cyan-400 shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-950/80 text-slate-400 hover:text-slate-200 border border-white/[0.08]'
+                ? 'bg-slate-800 text-cyan-400 border border-slate-700 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
             }`}
           >
             <BrainCircuit className="w-4 h-4" />
-            <span>Markov & Bandit AI</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-              activeTab === 'forecasting' ? 'bg-slate-950 text-cyan-300' : 'bg-slate-900 text-slate-400'
+            <span>Attack Forecasting & Bandit</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded font-normal ${
+              activeTab === 'forecasting' ? 'bg-slate-900 text-cyan-400' : 'text-slate-500'
             }`}>
               15 Arms
             </span>
@@ -623,16 +626,16 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('ablation')}
-            className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded font-medium flex items-center gap-2 transition-colors whitespace-nowrap ${
               activeTab === 'ablation'
-                ? 'bg-cyan-500 text-slate-950 border border-cyan-400 shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-950/80 text-slate-400 hover:text-slate-200 border border-white/[0.08]'
+                ? 'bg-slate-800 text-cyan-400 border border-slate-700 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
             }`}
           >
             <BarChart3 className="w-4 h-4" />
-            <span>Empirical MTTD & Matrix</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-              activeTab === 'ablation' ? 'bg-slate-950 text-cyan-300' : 'bg-slate-950 text-cyan-400'
+            <span>Ablation & Detection Benchmarks</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded font-normal ${
+              activeTab === 'ablation' ? 'bg-slate-900 text-cyan-400' : 'text-slate-500'
             }`}>
               Cond {simState.activeCondition}
             </span>
@@ -640,19 +643,19 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('audit')}
-            className={`px-3.5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded font-medium flex items-center gap-2 transition-colors whitespace-nowrap ${
               activeTab === 'audit'
-                ? 'bg-cyan-500 text-slate-950 border border-cyan-400 shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-950/80 text-slate-400 hover:text-slate-200 border border-white/[0.08]'
+                ? 'bg-slate-800 text-cyan-400 border border-slate-700 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
             }`}
           >
             <FileCheck2 className="w-4 h-4" />
-            <span>Resilience Audit & Flight Stream</span>
+            <span>Security Audit & Event Log</span>
           </button>
         </div>
 
-        {/* Global Mission Condition Selector Mini-Dial */}
-        <div className="flex items-center gap-1.5 text-[10px] font-mono border-t sm:border-t-0 sm:border-l border-white/[0.08] pt-2 sm:pt-0 sm:pl-3">
+        {/* Global Condition Selector */}
+        <div className="flex items-center gap-1.5 text-[10px] font-mono border-t sm:border-t-0 sm:border-l border-slate-800 pt-1.5 sm:pt-0 sm:pl-3">
           <span className="text-slate-400 uppercase hidden md:inline">Profile:</span>
           <div className="flex items-center gap-1">
             {ABLATION_CONDITIONS.map((cond) => {
@@ -661,10 +664,10 @@ export default function App() {
                 <button
                   key={cond.id}
                   onClick={() => handleConditionChange(cond.id)}
-                  className={`w-6 h-6 rounded flex items-center justify-center font-bold transition-all ${
+                  className={`w-6 h-6 rounded flex items-center justify-center font-bold transition-colors ${
                     isSelected
-                      ? 'bg-cyan-500 text-slate-950 font-bold border border-cyan-400 scale-105'
-                      : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-white/[0.08]'
+                      ? 'bg-cyan-500 text-slate-950 font-bold'
+                      : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
                   }`}
                   title={cond.name}
                 >
@@ -678,11 +681,11 @@ export default function App() {
 
       {/* 4. TAB CONTENT PANELS */}
       <main className="space-y-4">
-        {/* TAB 1: TACTICAL SOC & TOPOLOGY */}
+        {/* TAB 1: TOPOLOGY & THREAT MAP */}
         {activeTab === 'soc' && (
-          <div className="space-y-4 animate-needle-settle">
+          <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-              {/* Network Topology Map (5 cols) */}
+              {/* Network Topology Map (Hero surface) (5 cols) */}
               <div className="lg:col-span-5">
                 <NetworkMap
                   nodes={simState.nodes}
@@ -702,12 +705,12 @@ export default function App() {
                 />
               </div>
 
-              {/* Bayesian Risk Radar (4 cols) */}
+              {/* Bayesian Risk Profile (4 cols) */}
               <div className="lg:col-span-4">
                 <RadarChart selectedNode={selectedNode} />
               </div>
 
-              {/* Alert Feed (3 cols) */}
+              {/* Threat Alerts (3 cols) */}
               <div className="lg:col-span-3">
                 <AlertFeed alerts={simState.alerts} />
               </div>
@@ -715,39 +718,36 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: MARKOV & BANDIT AI */}
+        {/* TAB 2: ATTACK FORECASTING & BANDIT */}
         {activeTab === 'forecasting' && (
-          <div className="space-y-4 animate-needle-settle">
+          <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <PredictionPanel predictions={simState.predictions} />
               <BanditHeatmap ucbStats={simState.ucbStats} />
             </div>
 
-            {/* Quick Context Summary Strip */}
-            <div className="cockpit-panel rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-slate-400 gap-2">
+            {/* Quick Context Summary */}
+            <div className="bg-[#0b1120] border border-slate-800 rounded-lg p-3 flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-slate-400 gap-2">
               <div className="flex items-center gap-2">
                 <BrainCircuit className="w-4 h-4 text-cyan-400" />
                 <span>
-                  Markov transitions predict next MITRE stages; Multi-Armed Bandit (UCB1) maps attacker surface exploration regret.
+                  Markov models predict MITRE kill chain transitions; Multi-Armed Bandit (UCB1) maps attacker exploration across 15 techniques.
                 </span>
               </div>
               <button
                 onClick={() => setActiveTab('soc')}
-                className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 rounded text-[11px] font-bold"
+                className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-800 rounded text-[11px] font-medium"
               >
-                Inspect Live Topology →
+                View Topology Map →
               </button>
             </div>
           </div>
         )}
 
-        {/* TAB 3: EMPIRICAL MTTD & MATRIX */}
+        {/* TAB 3: ABLATION & DETECTION BENCHMARKS */}
         {activeTab === 'ablation' && (
-          <div className="space-y-4 animate-needle-settle">
-            {/* Longitudinal MTTD Trajectory Chart */}
+          <div className="space-y-4">
             <MTTDChart history={simState.mttdHistory} />
-
-            {/* Experimental Ablation Matrix */}
             <ExperimentTable
               metrics={simState.metrics}
               activeCondition={simState.activeCondition}
@@ -756,10 +756,9 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: RESILIENCE AUDIT & FLIGHT STREAM */}
+        {/* TAB 4: SECURITY AUDIT & EVENT LOG */}
         {activeTab === 'audit' && (
-          <div className="space-y-4 animate-needle-settle">
-            {/* Topology Airworthiness & Efficacy Scorecard */}
+          <div className="space-y-4">
             <ArchitectureBenchmark
               nodes={simState.nodes}
               edges={simState.edges}
@@ -767,17 +766,17 @@ export default function App() {
               currentRound={simState.currentRound}
             />
 
-            {/* Live Telemetry Flight Stream Logs */}
-            <div className="cockpit-panel rounded-xl p-4 text-xs font-mono">
-              <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
-                <div className="flex items-center gap-2 text-slate-200 font-bold">
+            {/* Simulation Event Log */}
+            <div className="bg-[#0b1120] border border-slate-800 rounded-lg p-4 text-xs font-mono">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div className="flex items-center gap-2 text-slate-200 font-semibold">
                   <Terminal className="w-4 h-4 text-cyan-400" />
-                  <span>High-Cadence Verification Flight Stream</span>
+                  <span>Simulation Event Log</span>
                 </div>
-                <span className="text-[10px] text-slate-400">Continuous 10-Tick Telemetry Audits</span>
+                <span className="text-[10px] text-slate-400">10-Tick Verification Audits</span>
               </div>
 
-              <div className="h-64 overflow-y-auto bg-slate-950/90 p-3 rounded-lg border border-white/[0.05] space-y-1.5 mt-3 text-[11px]">
+              <div className="h-64 overflow-y-auto bg-slate-950 p-3 rounded border border-slate-800/80 space-y-1.5 mt-3 text-[11px]">
                 {simState.logs.map((log, i) => {
                   const isVerification = log.includes('VERIFICATION') || log.includes('MTTD');
                   const isAlert = log.includes('ALERT');
@@ -787,14 +786,14 @@ export default function App() {
                     <div
                       key={i}
                       className={
-                        isVerification
-                          ? 'text-amber-300 font-bold'
-                          : isInject
-                          ? 'text-fuchsia-300 font-bold'
-                          : isAlert
-                          ? 'text-rose-300'
+                        isAlert
+                          ? 'text-rose-400'
+                          : isVerification
+                          ? 'text-amber-400'
                           : isHoneypot
-                          ? 'text-teal-300'
+                          ? 'text-emerald-400'
+                          : isInject
+                          ? 'text-cyan-400 font-semibold'
                           : 'text-slate-400'
                       }
                     >

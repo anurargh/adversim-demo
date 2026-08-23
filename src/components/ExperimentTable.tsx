@@ -43,7 +43,7 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
   const panelContent = (
     <div
       ref={containerRef}
-      className={`cockpit-panel rounded-xl p-4 flex flex-col justify-between text-xs font-mono transition-all duration-300 ${
+      className={`bg-[#0b1120] border border-slate-800 rounded-lg p-4 flex flex-col justify-between text-xs font-mono transition-all duration-300 ${
         isFullscreen
           ? 'fixed inset-0 z-[999999] bg-[#07090e] p-4 sm:p-6 overflow-hidden shadow-2xl w-screen h-screen'
           : 'h-[440px]'
@@ -51,31 +51,30 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
     >
       {/* Header */}
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/[0.08] pb-2.5 gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-2.5 gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-live-blip" />
-            <h3 className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-bold uppercase tracking-widest text-slate-100 flex items-center gap-1.5`}>
-              Experimental Ablation Matrix (Conditions A – F)
+            <h3 className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-bold uppercase tracking-wider text-slate-100 flex items-center gap-1.5`}>
+              Ablation Benchmark Matrix
             </h3>
             {isFullscreen && (
-              <span className="px-2 py-0.5 rounded font-mono font-bold text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                DEEP PARAMETRIC BENCHMARKS
+              <span className="px-2 py-0.5 rounded font-mono text-[10px] bg-slate-900 text-cyan-400 border border-slate-800">
+                Detailed Metrics
               </span>
             )}
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-              CLICK ROW TO SWITCH MISSION PROFILE
+            <span className="px-2 py-0.5 rounded font-mono text-[10px] bg-slate-900 text-slate-400 border border-slate-800">
+              Click row to select condition
             </span>
 
             {/* Expand / Minimize Button */}
             <button
               onClick={toggleFullscreen}
-              className={`p-1.5 rounded-lg border transition-all flex items-center justify-center ${
+              className={`p-1.5 rounded border transition-colors flex items-center justify-center ${
                 isFullscreen
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/30'
-                  : 'bg-slate-900 hover:bg-slate-800 text-cyan-300 border-cyan-500/30 hover:border-cyan-500/60'
+                  ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-800'
               }`}
               title={isFullscreen ? 'Exit Full Screen (ESC)' : 'Expand Ablation Matrix to Full Screen'}
               aria-label={isFullscreen ? 'Exit Full Screen' : 'Expand Ablation Matrix to Full Screen'}
@@ -90,7 +89,7 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
         </div>
 
         <p className="text-[11px] text-slate-400 mt-2">
-          Comparative empirical performance benchmarks isolating peer collaboration, deception honeypots, Markov forecasting, and bandit adaptation.
+          Empirical benchmarks isolating peer collaboration, honeypots, Markov forecasting, and bandit adaptation.
         </p>
       </div>
 
@@ -98,20 +97,20 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
       <div className="my-2 overflow-x-auto overflow-y-auto flex-1 min-h-0">
         <table className="w-full text-xs text-left border-collapse min-w-[850px]">
           <thead>
-            <tr className="bg-slate-950/90 text-slate-400 uppercase tracking-wider border-y border-white/[0.08] text-[10px] sticky top-0 z-10">
-              <th className="py-2.5 px-3">Condition Profile</th>
-              <th className="py-2.5 px-2">MTTD (s)</th>
-              <th className="py-2.5 px-2">FPR (%)</th>
-              <th className="py-2.5 px-2">Weight Conv.</th>
-              <th className="py-2.5 px-2">Det. Regret</th>
-              <th className="py-2.5 px-2">Collab. Adv</th>
-              <th className="py-2.5 px-2">Honeypot Eng.</th>
-              <th className="py-2.5 px-2">Pred. Acc.</th>
-              <th className="py-2.5 px-2">Filter Rej.</th>
-              <th className="py-2.5 px-2">Bandit Regret</th>
+            <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider border-y border-slate-800 text-[10px] sticky top-0 z-10">
+              <th className="py-2 px-3">Condition Profile</th>
+              <th className="py-2 px-2">MTTD (s)</th>
+              <th className="py-2 px-2">FPR (%)</th>
+              <th className="py-2 px-2">Weight Conv.</th>
+              <th className="py-2 px-2">Det. Regret</th>
+              <th className="py-2 px-2">Collab. Adv</th>
+              <th className="py-2 px-2">Honeypot Eng.</th>
+              <th className="py-2 px-2">Pred. Acc.</th>
+              <th className="py-2 px-2">Filter Rej.</th>
+              <th className="py-2 px-2">Bandit Regret</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.05]">
+          <tbody className="divide-y divide-slate-800/60">
             {metrics.map((row) => {
               const isActive = activeCondition === row.conditionId;
 
@@ -119,26 +118,26 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
                 <tr
                   key={row.conditionId}
                   onClick={() => onSelectCondition(row.conditionId)}
-                  className={`cursor-pointer transition-all ${
+                  className={`cursor-pointer transition-colors ${
                     isActive
-                      ? 'bg-cyan-950/40 text-cyan-200 font-semibold border-l-2 border-cyan-400'
-                      : 'text-slate-300 hover:bg-slate-900/60'
+                      ? 'bg-slate-800/80 text-cyan-200 font-semibold'
+                      : 'text-slate-300 hover:bg-slate-900'
                   }`}
                 >
                   <td className="py-2.5 px-3 flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-cyan-400 animate-pulse' : 'bg-slate-700'}`} />
-                    <span className={isActive ? 'text-cyan-300 font-bold' : 'text-slate-200'}>
+                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-cyan-400' : 'bg-slate-700'}`} />
+                    <span className={isActive ? 'text-cyan-300 font-medium' : 'text-slate-200'}>
                       {row.conditionName}
                     </span>
                   </td>
-                  <td className="py-2.5 px-2 font-bold text-rose-300">{row.mttd}s</td>
+                  <td className="py-2.5 px-2 font-semibold text-rose-300">{row.mttd}s</td>
                   <td className="py-2.5 px-2 text-amber-300">{row.fpr}%</td>
                   <td className="py-2.5 px-2 text-slate-400">{row.weightConvergenceSpeed} r</td>
                   <td className="py-2.5 px-2 text-slate-300">{row.detectionRegret}</td>
-                  <td className="py-2.5 px-2 font-bold text-cyan-300">{row.collaborativeAdvantage}%</td>
+                  <td className="py-2.5 px-2 font-semibold text-cyan-300">{row.collaborativeAdvantage}%</td>
                   <td className="py-2.5 px-2 text-teal-300">{row.honeypotEngagementRate}%</td>
                   <td className="py-2.5 px-2 text-purple-300">{row.predictionAccuracy}%</td>
-                  <td className="py-2.5 px-2 text-orange-300">{row.consistencyRejectionRate}%</td>
+                  <td className="py-2.5 px-2 text-amber-300">{row.consistencyRejectionRate}%</td>
                   <td className="py-2.5 px-2 text-slate-400">{row.banditRegret}</td>
                 </tr>
               );
@@ -147,13 +146,13 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
         </table>
       </div>
 
-      {/* Footer Instrument Status Strip */}
-      <div className="border-t border-white/[0.08] pt-2 flex items-center justify-between text-[10px] font-mono text-slate-400">
+      {/* Footer Status Strip */}
+      <div className="border-t border-slate-800 pt-2 flex items-center justify-between text-[10px] font-mono text-slate-400">
         <span className="flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
-          Active Mission Profile: <strong className="text-cyan-300">Condition {activeCondition}</strong>
+          Active: <strong className="text-slate-200 font-medium">Condition {activeCondition}</strong>
         </span>
-        <span className="text-slate-500">Live Metric Recalibration Active</span>
+        <span className="text-slate-500">6 Experimental Configurations</span>
       </div>
     </div>
   );

@@ -271,47 +271,46 @@ export const RadarChart: React.FC<RadarChartProps> = ({
   const panelContent = (
     <div
       ref={containerRef}
-      className={`cockpit-panel rounded-xl p-4 flex flex-col justify-between transition-all duration-300 ${
+      className={`bg-[#0b1120] border border-slate-800 rounded-lg p-4 flex flex-col justify-between transition-all duration-300 ${
         isFullscreen
           ? 'fixed inset-0 z-[999999] bg-[#07090e] p-4 sm:p-6 overflow-hidden shadow-2xl w-screen h-screen'
           : 'h-[450px]'
       }`}
     >
-      {/* Instrument Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.08] pb-2.5 gap-2 flex-wrap">
+      {/* Panel Header */}
+      <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 gap-2 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${hasCriticalSpike ? 'bg-rose-500 animate-ping' : 'bg-cyan-400 animate-live-blip'}`} />
-            <h3 className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-bold uppercase tracking-widest text-slate-100 flex items-center gap-1.5`}>
-              15-Vector Bayesian Distribution
+            <h3 className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-bold uppercase tracking-wider text-slate-100 flex items-center gap-1.5`}>
+              Bayesian Risk Distribution
             </h3>
             {isFullscreen && (
-              <span className="px-2 py-0.5 rounded font-mono font-bold text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                EXPANDED RISK TELEMETRY
+              <span className="px-2 py-0.5 rounded font-mono text-[10px] bg-slate-900 text-cyan-400 border border-slate-800">
+                Detailed Matrix
               </span>
             )}
           </div>
           <p className="text-[11px] text-slate-400 font-mono mt-0.5 truncate max-w-[280px]">
-            Target: <span className="text-slate-200 font-bold">{activeName}</span> ({activeIp})
+            Node: <span className="text-slate-200 font-semibold">{activeName}</span> ({activeIp})
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-0.5 text-[10px] rounded font-mono font-bold border ${
+          <span className={`px-2 py-0.5 text-[10px] rounded font-mono border ${
             hasCriticalSpike 
-              ? 'bg-rose-950/60 text-rose-300 border-rose-500/40 animate-pulse' 
-              : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30'
+              ? 'bg-rose-950/60 text-rose-300 border-rose-500/40' 
+              : 'bg-slate-900 text-slate-400 border-slate-800'
           }`}>
-            {hasCriticalSpike ? 'ALERT: ANOMALY SPIKE' : 'NOMINAL BALANCE'}
+            {hasCriticalSpike ? 'Anomaly Spike' : 'Nominal'}
           </span>
 
           {/* Fullscreen Expand / Minimize Button */}
           <button
             onClick={toggleFullscreen}
-            className={`p-1.5 rounded-lg border transition-all flex items-center justify-center ${
+            className={`p-1.5 rounded border transition-colors flex items-center justify-center ${
               isFullscreen
-                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/30'
-                : 'bg-slate-900 hover:bg-slate-800 text-cyan-300 border-cyan-500/30 hover:border-cyan-500/60'
+                ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-800'
             }`}
             title={isFullscreen ? 'Exit Full Screen (ESC)' : 'Expand Radar to Full Screen'}
             aria-label={isFullscreen ? 'Exit Full Screen' : 'Expand Radar to Full Screen'}
@@ -333,19 +332,19 @@ export const RadarChart: React.FC<RadarChartProps> = ({
 
           {/* Hover / Tooltip HUD Readout */}
           {hoveredTech && (
-            <div className="absolute bottom-2 left-2 right-2 bg-slate-950/95 border border-cyan-500/40 rounded-lg p-2.5 shadow-2xl backdrop-blur-md flex items-center justify-between text-xs font-mono animate-needle-settle z-20">
+            <div className="absolute bottom-2 left-2 right-2 bg-slate-950 border border-slate-800 rounded-lg p-2.5 shadow-xl flex items-center justify-between text-xs font-mono z-20">
               <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-300 rounded font-bold text-[10px]">
+                <span className="px-1.5 py-0.5 bg-slate-800 text-cyan-400 rounded text-[10px] font-semibold">
                   {hoveredTech.code}
                 </span>
                 <div>
-                  <span className="font-bold text-slate-100 block text-[11px]">{hoveredTech.name}</span>
+                  <span className="font-semibold text-slate-200 block text-[11px]">{hoveredTech.name}</span>
                   <span className="text-[10px] text-slate-400">{hoveredTech.stage}</span>
                 </div>
               </div>
               <div className="text-right">
                 <span className="text-[10px] text-slate-400 block">Bayesian Density</span>
-                <span className={`text-xs font-bold ${(hoveredTech.val * 100) > 14 ? 'text-rose-400' : 'text-cyan-300'}`}>
+                <span className={`text-xs font-bold ${(hoveredTech.val * 100) > 14 ? 'text-rose-400' : 'text-cyan-400'}`}>
                   {(hoveredTech.val * 100).toFixed(1)}%
                 </span>
               </div>
@@ -355,13 +354,13 @@ export const RadarChart: React.FC<RadarChartProps> = ({
 
         {/* In Fullscreen Mode: Detailed 15-Vector MITRE Table & Stage Breakdown */}
         {isFullscreen && (
-          <div className="lg:flex-[2] bg-slate-950/80 border border-white/[0.08] rounded-lg p-3.5 flex flex-col justify-between overflow-hidden text-xs font-mono">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
-              <span className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
+          <div className="lg:flex-[2] bg-slate-950 border border-slate-800 rounded-lg p-3.5 flex flex-col justify-between overflow-hidden text-xs font-mono">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="font-semibold text-slate-200 flex items-center gap-1.5 text-xs">
                 <BarChart3 className="w-4 h-4 text-cyan-400" />
                 MITRE ATT&CK Surface Breakdown
               </span>
-              <span className="text-[10px] text-slate-400">15 Total Attack Vectors</span>
+              <span className="text-[10px] text-slate-400">15 Vectors</span>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-1.5 my-2 pr-1 min-h-0 text-[11px]">
@@ -376,17 +375,17 @@ export const RadarChart: React.FC<RadarChartProps> = ({
                     className={`p-2 rounded border flex items-center justify-between gap-2 transition-colors cursor-pointer ${
                       isCrit
                         ? 'bg-rose-950/40 border-rose-500/40 text-rose-200'
-                        : 'bg-slate-900/60 border-white/[0.05] hover:border-cyan-500/30'
+                        : 'bg-slate-900 border-slate-800/80 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate max-w-[200px]">
-                      <span className={`px-1.5 py-0.2 rounded font-bold text-[9px] ${
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-semibold ${
                         isCrit ? 'bg-rose-500/30 text-rose-300' : 'bg-slate-800 text-slate-400'
                       }`}>
                         {tech.code}
                       </span>
                       <div className="truncate">
-                        <div className="font-bold text-slate-200 truncate">{tech.name}</div>
+                        <div className="font-semibold text-slate-200 truncate">{tech.name}</div>
                         <div className="text-[9px] text-slate-400">{tech.stage}</div>
                       </div>
                     </div>
@@ -398,7 +397,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
                           style={{ width: `${Math.min(100, (pct / 25) * 100)}%` }}
                         />
                       </div>
-                      <span className={`font-bold text-[11px] w-12 text-right ${isCrit ? 'text-rose-400' : 'text-cyan-300'}`}>
+                      <span className={`font-semibold text-[11px] w-12 text-right ${isCrit ? 'text-rose-400' : 'text-cyan-400'}`}>
                         {pct.toFixed(1)}%
                       </span>
                     </div>
@@ -407,20 +406,20 @@ export const RadarChart: React.FC<RadarChartProps> = ({
               })}
             </div>
 
-            <div className="text-[10px] text-slate-400 pt-1 border-t border-white/[0.05] flex justify-between">
-              <span>Updated via recursive Bayesian updates</span>
-              <span className="text-cyan-300">Sum: 100.0%</span>
+            <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-800 flex justify-between">
+              <span>Bayesian posterior distribution</span>
+              <span className="text-cyan-400">Sum: 100.0%</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Footer Instrument Status Strip */}
-      <div className="border-t border-white/[0.08] pt-2 flex items-center justify-between text-[10px] font-mono text-slate-400">
+      {/* Footer Status Strip */}
+      <div className="border-t border-slate-800 pt-2 flex items-center justify-between text-[10px] font-mono text-slate-400">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" />
-            Standard Risk
+            Standard
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
@@ -429,8 +428,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
         </div>
 
         <div className="flex items-center gap-1 text-slate-300">
-          <Zap className="w-3 h-3 text-amber-400" />
-          <span>Top Vector: <strong className="text-amber-300">{maxTech?.code}</strong> ({(maxTech?.val * 100).toFixed(1)}%)</span>
+          <span>Top Vector: <strong className="text-cyan-400">{maxTech?.code}</strong> ({(maxTech?.val * 100).toFixed(1)}%)</span>
         </div>
       </div>
     </div>
