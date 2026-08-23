@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SimulationEngine } from './lib/simulationEngine';
 import {
   INITIAL_NODES,
+  getInitialNodes,
   INITIAL_EDGES,
   ABLATION_CONDITIONS,
   INITIAL_METRICS,
@@ -254,7 +255,7 @@ export default function App() {
     engine.setState({
       isRunning: false,
       currentRound: 0,
-      nodes: INITIAL_NODES,
+      nodes: getInitialNodes(),
       alerts: [],
       predictions: [],
       logs: ['[SYSTEM] Telemetry buffers reset to baseline T+000.'],
@@ -262,6 +263,17 @@ export default function App() {
       rollingMttdBuffer: [],
       simMttdValues: { A: 140, B: 90, C: 75, D: 65, E: 30 },
       totalAlertCount: 0,
+      mttdHistory: [
+        {
+          round: 0,
+          ConditionA: 145,
+          ConditionB: 95,
+          ConditionC: 80,
+          ConditionD: 70,
+          ConditionE: 35,
+          ConditionF: 36,
+        },
+      ],
     });
     setSimState({ ...engine.getState() });
 
