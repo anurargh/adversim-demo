@@ -27,8 +27,17 @@ import {
   Maximize2,
   Minimize2,
   RotateCcw,
-  Check
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ZoomIn,
+  ZoomOut,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 export interface NetworkMapProps {
   nodes: SimNode[];
@@ -67,11 +76,94 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const fleetRef = useRef<HTMLDivElement | null>(null);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [linkSourceId, setLinkSourceId] = useState<string | null>(null);
+
+  // Canvas Pan & Zoom State for mousewheel and drag navigation
+  const [canvasPan, setCanvasPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [canvasZoom, setCanvasZoom] = useState<number>(1);
+  const [scrollMode, setScrollMode] = useState<'canvas' | 'page'>('canvas');
+  const [isPanning, setIsPanning] = useState(false);
+  const dragStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+
+  const scrollToFleet = () => {
+    fleetRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const scrollToTop = () => {
+    containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const panCanvas = (dx: number, dy: number) => {
+    setCanvasPan((prev) => ({
+      x: prev.x + dx,
+      y: prev.y + dy,
+    }));
+  };
+
+  const zoomCanvas = (factor: number) => {
+    setCanvasZoom((prev) => Math.max(0.4, Math.min(3.0, Number((prev * factor).toFixed(2)))));
+  };
+
+  const resetCanvasView = () => {
+    setCanvasPan({ x: 0, y: 0 });
+    setCanvasZoom(1);
+  };
+
+  const handleSvgWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    if (scrollMode === 'canvas') {
+      e.stopPropagation();
+      if (e.ctrlKey || e.metaKey) {
+        // Zoom on Ctrl / Cmd + wheel
+        const factor = e.deltaY < 0 ? 1.12 : 0.88;
+        zoomCanvas(factor);
+      } else {
+        // Scroll canvas up or down
+        // When rolling wheel down (positive deltaY), map pans down (prev.y - deltaY)
+        panCanvas(0, -e.deltaY * 0.75);
+      }
+    } else {
+      // In page mode: scroll the outer fullscreen container
+      if (containerRef.current) {
+        containerRef.current.scrollTop += e.deltaY;
+      }
+    }
+  };
+
+  const handleSvgMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    // Only pan if clicking on empty background
+    const target = e.target as HTMLElement;
+    const isNode = target.closest('.node-interactive-group');
+    if (!isNode && !isLinking) {
+      setIsPanning(true);
+      dragStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        panX: canvasPan.x,
+        panY: canvasPan.y,
+      };
+    }
+  };
+
+  const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (isPanning && dragStartRef.current) {
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      setCanvasPan({
+        x: dragStartRef.current.panX + dx,
+        y: dragStartRef.current.panY + dy,
+      });
+    }
+  };
+
+  const handleSvgMouseUp = () => {
+    setIsPanning(false);
+    dragStartRef.current = null;
+  };
 
   // Modal for adding custom node
   const [showAddModal, setShowAddModal] = useState(false);
@@ -93,25 +185,49 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
     honeypotBroadcastActive ||
     nodes.some((n) => n.isHoneypot && n.status === 'under_attack');
 
-  // Handle ESC key and prevent body scrolling when in fullscreen
+  // Keyboard navigation for fullscreen scrolling, panning, and ESC
   useEffect(() => {
     if (isFullscreen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+      // Focus container so arrow keys and page scroll work immediately
+      requestAnimationFrame(() => {
+        containerRef.current?.focus();
+      });
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isFullscreen) {
         setIsFullscreen(false);
+      } else if (isFullscreen) {
+        if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+          if (scrollMode === 'canvas') {
+            panCanvas(0, 60);
+          } else if (containerRef.current) {
+            containerRef.current.scrollTop -= 80;
+          }
+        } else if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+          if (scrollMode === 'canvas') {
+            panCanvas(0, -60);
+          } else if (containerRef.current) {
+            containerRef.current.scrollTop += 80;
+          }
+        } else if (e.key === 'ArrowLeft') {
+          panCanvas(60, 0);
+        } else if (e.key === 'ArrowRight') {
+          panCanvas(-60, 0);
+        } else if (e.key === '+' || e.key === '=') {
+          zoomCanvas(1.15);
+        } else if (e.key === '-' || e.key === '_') {
+          zoomCanvas(0.85);
+        } else if (e.key === '0') {
+          resetCanvasView();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isFullscreen]);
+  }, [isFullscreen, scrollMode]);
 
   const toggleFullscreen = () => {
     setIsFullscreen((prev) => !prev);
@@ -182,7 +298,9 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
       positionsMap[n.id] = getNodePos(n, idx, nodes.length, width, height);
     });
 
-    const g = svg.append('g');
+    const g = svg.append('g')
+      .attr('class', 'canvas-viewport-group')
+      .attr('transform', `translate(${canvasPan.x}, ${canvasPan.y}) scale(${canvasZoom})`);
 
     // 1. Radar Concentric Rings & Azimuth Crosshairs
     const cx = width / 2;
@@ -333,8 +451,10 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
       // Drag Behavior
       const drag = d3.drag<SVGGElement, unknown>()
         .on('drag', (event) => {
-          const newX = Math.max(30, Math.min(width - 30, event.x));
-          const newY = Math.max(30, Math.min(height - 30, event.y));
+          const adjustedX = (event.x - canvasPan.x) / canvasZoom;
+          const adjustedY = (event.y - canvasPan.y) / canvasZoom;
+          const newX = Math.max(30, Math.min(width - 30, adjustedX));
+          const newY = Math.max(30, Math.min(height - 30, adjustedY));
           if (onMoveNode) {
             // Unscale if fullscreen to keep consistent baseline
             const baseNodeX = isFullscreen ? (newX / width) * 650 : newX;
@@ -344,6 +464,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
         });
 
       const nodeGroup = g.append('g')
+        .attr('class', 'node-interactive-group')
         .attr('transform', `translate(${pos.x}, ${pos.y})`)
         .style('cursor', isLinking ? 'crosshair' : 'grab')
         .call(drag as any)
@@ -477,7 +598,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
       }
     });
 
-  }, [nodes, edges, selectedNodeId, linkSourceId, isLinking, isHoneypotTriggered, isFullscreen, onSelectNode, onMoveNode, onDeleteEdge, onDeleteNode, onAddEdge, getNodePos]);
+  }, [nodes, edges, selectedNodeId, linkSourceId, isLinking, isHoneypotTriggered, isFullscreen, canvasPan, canvasZoom, onSelectNode, onMoveNode, onDeleteEdge, onDeleteNode, onAddEdge, getNodePos]);
 
   useEffect(() => {
     renderD3();
@@ -552,11 +673,39 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
   const panelContent = (
     <div
       ref={containerRef}
-      className={`cockpit-panel rounded-xl p-4 flex flex-col justify-between relative transition-all duration-300 ${
+      tabIndex={isFullscreen ? 0 : undefined}
+      onWheel={(e) => {
+        // Forward wheel event to container scroll when in page mode or hovering outside SVG
+        if (isFullscreen && containerRef.current) {
+          const target = e.target as HTMLElement;
+          const isOverSvg = target.closest('svg');
+          if (!isOverSvg || scrollMode === 'page') {
+            containerRef.current.scrollTop += e.deltaY;
+          }
+        }
+      }}
+      className={`cockpit-panel rounded-xl p-4 flex flex-col relative transition-all duration-300 ${
         isFullscreen
-          ? 'fixed inset-0 z-[999999] bg-[#07090e] p-4 sm:p-6 overflow-hidden shadow-2xl w-screen h-screen'
-          : 'h-[450px]'
+          ? 'fixed inset-0 z-[999999] bg-[#07090e] p-4 sm:p-6 md:p-8 overflow-y-scroll overflow-x-hidden shadow-2xl focus:outline-none scroll-smooth'
+          : 'h-[450px] justify-between'
       }`}
+      style={
+        isFullscreen
+          ? {
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100vh',
+              maxHeight: '100vh',
+              zIndex: 999999,
+              overflowY: 'scroll',
+              WebkitOverflowScrolling: 'touch',
+            }
+          : undefined
+      }
     >
       {/* Top Header & Tactical Presets */}
       <div>
@@ -597,6 +746,16 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
                 );
               })}
             </div>
+
+            {isFullscreen && (
+              <button
+                onClick={scrollToFleet}
+                className="px-2 py-1 rounded border border-cyan-500/30 bg-slate-900 hover:bg-slate-800 text-cyan-300 text-[10px] font-mono flex items-center gap-1 transition-colors"
+                title="Scroll down to Fleet Inventory & Link Ledger"
+              >
+                Fleet Ledger <ChevronDown className="w-3 h-3" />
+              </button>
+            )}
 
             {/* Expand / Minimize Fullscreen Toggle Button */}
             <button
@@ -709,8 +868,126 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
       </div>
 
       {/* SVG Canvas Area */}
-      <div className="flex-1 w-full relative min-h-0 overflow-hidden my-2">
-        <svg ref={svgRef} className="w-full h-full radar-grid rounded-lg border border-white/[0.06]" />
+      <div
+        className={`w-full relative my-2 ${
+          isFullscreen
+            ? 'h-[560px] sm:h-[640px] min-h-[480px] flex-shrink-0'
+            : 'flex-1 min-h-0 overflow-hidden'
+        }`}
+      >
+        <svg
+          ref={svgRef}
+          onWheel={handleSvgWheel}
+          onMouseDown={handleSvgMouseDown}
+          onMouseMove={handleSvgMouseMove}
+          onMouseUp={handleSvgMouseUp}
+          onMouseLeave={handleSvgMouseUp}
+          className={`w-full h-full radar-grid rounded-lg border border-white/[0.06] select-none ${
+            isPanning ? 'cursor-grabbing' : isLinking ? 'cursor-crosshair' : 'cursor-grab'
+          }`}
+        />
+
+        {/* On-Canvas Floating Navigation & Pan/Zoom HUD */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20 font-mono text-xs pointer-events-auto">
+          {/* Pan & Zoom Controls */}
+          <div className="bg-slate-950/90 border border-white/[0.12] rounded-lg p-1.5 flex items-center gap-1 shadow-xl backdrop-blur-sm">
+            {/* Pan Up */}
+            <button
+              onClick={() => panCanvas(0, 60)}
+              className="p-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-white/[0.08] hover:border-cyan-500/40 transition-colors cursor-pointer"
+              title="Pan Map Up (or roll mouse wheel up)"
+              aria-label="Pan Map Up"
+            >
+              <ArrowUp className="w-3.5 h-3.5" />
+            </button>
+            {/* Pan Down */}
+            <button
+              onClick={() => panCanvas(0, -60)}
+              className="p-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-white/[0.08] hover:border-cyan-500/40 transition-colors cursor-pointer"
+              title="Pan Map Down (or roll mouse wheel down)"
+              aria-label="Pan Map Down"
+            >
+              <ArrowDown className="w-3.5 h-3.5" />
+            </button>
+            {/* Pan Left */}
+            <button
+              onClick={() => panCanvas(60, 0)}
+              className="p-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-white/[0.08] hover:border-cyan-500/40 transition-colors cursor-pointer"
+              title="Pan Map Left"
+              aria-label="Pan Map Left"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+            {/* Pan Right */}
+            <button
+              onClick={() => panCanvas(-60, 0)}
+              className="p-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-white/[0.08] hover:border-cyan-500/40 transition-colors cursor-pointer"
+              title="Pan Map Right"
+              aria-label="Pan Map Right"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="w-px h-4 bg-white/[0.1] mx-0.5" />
+
+            {/* Zoom In */}
+            <button
+              onClick={() => zoomCanvas(1.15)}
+              className="p-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-white/[0.08] hover:border-cyan-500/40 transition-colors cursor-pointer"
+              title="Zoom In (+ key)"
+              aria-label="Zoom In"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            {/* Zoom Out */}
+            <button
+              onClick={() => zoomCanvas(0.85)}
+              className="p-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-white/[0.08] hover:border-cyan-500/40 transition-colors cursor-pointer"
+              title="Zoom Out (- key)"
+              aria-label="Zoom Out"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            {/* Reset */}
+            <button
+              onClick={resetCanvasView}
+              className="px-1.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/[0.08] hover:border-cyan-500/40 transition-colors text-[10px] flex items-center gap-1 cursor-pointer"
+              title="Reset Zoom & Pan (0 key)"
+            >
+              <RotateCcw className="w-3 h-3 text-cyan-400" />
+              <span>{Math.round(canvasZoom * 100)}%</span>
+            </button>
+          </div>
+
+          {/* Mouse Wheel Mode Selector */}
+          {isFullscreen && (
+            <div className="bg-slate-950/90 border border-white/[0.12] rounded-lg p-1 flex items-center gap-1 shadow-xl backdrop-blur-sm text-[10px]">
+              <span className="text-slate-400 px-1">Wheel:</span>
+              <button
+                onClick={() => setScrollMode('canvas')}
+                className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                  scrollMode === 'canvas'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Mouse wheel scrolls/pans the topology map up and down"
+              >
+                Pan Map ↕
+              </button>
+              <button
+                onClick={() => setScrollMode('page')}
+                className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                  scrollMode === 'page'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Mouse wheel scrolls the full screen view down to the fleet ledger"
+              >
+                Scroll View ↕
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Link Wiring Instruction Banner */}
         {isLinking && (
@@ -722,7 +999,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
 
         {/* Selected Node Quick Inspector Drawer */}
         {sidePanelOpen && selectedNode && (
-          <div className={`absolute top-3 right-3 ${isFullscreen ? 'w-72' : 'w-60'} bg-slate-950/95 border border-cyan-500/40 rounded-lg p-3.5 text-xs font-mono backdrop-blur-md shadow-2xl space-y-2.5 animate-needle-settle z-30`}>
+          <div className={`absolute top-3 right-3 ${isFullscreen ? 'w-72' : 'w-60'} max-h-[85%] overflow-y-auto bg-slate-950/95 border border-cyan-500/40 rounded-lg p-3.5 text-xs font-mono backdrop-blur-md shadow-2xl space-y-2.5 animate-needle-settle z-30`}>
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-1.5">
               <span className="font-bold text-slate-100 flex items-center gap-1.5">
                 <Sliders className="w-3.5 h-3.5 text-cyan-400" />
@@ -869,9 +1146,148 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
         <div className="flex items-center gap-3">
           <span>• Drag nodes to reposition topology</span>
           <span>• Click red × to remove links</span>
-          {isFullscreen && <span className="text-cyan-400 font-bold">Press ESC to exit Fullscreen</span>}
+          {isFullscreen && (
+            <button
+              onClick={scrollToFleet}
+              className="text-cyan-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              Scroll down for Fleet Ledger & Threats <ChevronDown className="w-3 h-3 inline" />
+            </button>
+          )}
+          {isFullscreen && <span className="text-slate-500">| Press ESC to exit Fullscreen</span>}
         </div>
       </div>
+
+      {/* Fullscreen Node Fleet Ledger & Lateral Interconnects Table */}
+      {isFullscreen && (
+        <div ref={fleetRef} className="mt-6 border-t border-white/[0.08] pt-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-cyan-400" />
+                Defensive Fleet Node Inventory & Lateral Links
+              </h4>
+              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                Full-screen architectural ledger of all {nodes.length} nodes and {edges.length} active interconnects.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={scrollToTop}
+                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 rounded text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <ChevronUp className="w-3.5 h-3.5" /> Back to Top
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border border-white/[0.08] bg-slate-950/60">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-slate-900/90 text-slate-400 text-[10px] uppercase border-b border-white/[0.08]">
+                <tr>
+                  <th className="py-2.5 px-3">Node Label</th>
+                  <th className="py-2.5 px-3">Type</th>
+                  <th className="py-2.5 px-3">IP Address</th>
+                  <th className="py-2.5 px-3">Active Status</th>
+                  <th className="py-2.5 px-3">Lateral Links</th>
+                  <th className="py-2.5 px-3">False-Pos Rate</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {nodes.map((node) => {
+                  const connectedEdges = edges.filter(
+                    (e) => e.source === node.id || e.target === node.id
+                  );
+                  const isSelected = selectedNodeId === node.id;
+                  return (
+                    <tr
+                      key={node.id}
+                      onClick={() => onSelectNode(node.id)}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'bg-cyan-500/10 text-cyan-200'
+                          : 'hover:bg-white/[0.02] text-slate-300'
+                      }`}
+                    >
+                      <td className="py-2 px-3 font-semibold flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            node.status === 'under_attack'
+                              ? 'bg-rose-500 animate-ping'
+                              : node.isHoneypot
+                              ? 'bg-teal-400'
+                              : node.type === 'Admin'
+                              ? 'bg-indigo-400'
+                              : 'bg-cyan-400'
+                          }`}
+                        />
+                        {node.name}
+                        {node.isHoneypot && (
+                          <span className="px-1 py-0.2 text-[9px] bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded">
+                            DECOY
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 px-3">
+                        <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-white/[0.08] text-[10px]">
+                          {node.type}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-slate-400">{node.ip}</td>
+                      <td className="py-2 px-3">
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            node.status === 'under_attack'
+                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          }`}
+                        >
+                          {node.status === 'under_attack' ? 'UNDER ATTACK' : 'NOMINAL'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-slate-400">
+                        {connectedEdges.length} peer{connectedEdges.length !== 1 ? 's' : ''}
+                      </td>
+                      <td className="py-2 px-3 text-slate-400">
+                        {(node.fpr * 100).toFixed(2)}%
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectNode(node.id);
+                            setSidePanelOpen(true);
+                            setEditingNodeId(node.id);
+                            setEditName(node.name);
+                            setEditIp(node.ip);
+                            setEditFpr(node.fpr);
+                            scrollToTop();
+                          }}
+                          className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 rounded text-[10px] mr-1 cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                        {onDeleteNode && nodes.length > 3 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteNode(node.id);
+                            }}
+                            className="px-2 py-0.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/30 rounded text-[10px] cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Add Custom Node Modal */}
       {showAddModal && (
@@ -960,6 +1376,10 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
       )}
     </div>
   );
+
+  if (isFullscreen && typeof document !== 'undefined') {
+    return createPortal(panelContent, document.body);
+  }
 
   return panelContent;
 };

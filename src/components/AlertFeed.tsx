@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertEvent } from '../types';
 import {
   ShieldAlert,
@@ -27,14 +28,8 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ alerts }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Handle ESC key and prevent body scrolling when in fullscreen
+  // Handle ESC key when in fullscreen
   useEffect(() => {
-    if (isFullscreen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isFullscreen) {
         setIsFullscreen(false);
@@ -42,7 +37,6 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ alerts }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isFullscreen]);
@@ -284,6 +278,10 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ alerts }) => {
       </div>
     </div>
   );
+
+  if (isFullscreen && typeof document !== 'undefined') {
+    return createPortal(panelContent, document.body);
+  }
 
   return panelContent;
 };

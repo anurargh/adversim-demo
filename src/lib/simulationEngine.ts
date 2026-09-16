@@ -121,18 +121,28 @@ export class SimulationEngine {
     // 4. Two-Layer Detection (Isolation Forest + Markov Chain + MITRE Surface Criticality + Bayesian Risk)
     // Detection sensitivity varies by asset criticality and attack technique impact
     const nodeBonus = targetNode.type === 'Admin' 
-      ? 0.20 
+      ? 0.28 
       : targetNode.type === 'Server' 
-      ? 0.12 
-      : 0.05;
+      ? 0.18 
+      : targetNode.status === 'under_attack'
+      ? 0.15
+      : 0.08;
+
+    // Stage severity factor: Exfiltration and Lateral Movement represent escalated breach risk
+    const stageMultiplier = 
+      mitre.stage === 'Exfiltration' ? 1.30 :
+      mitre.stage === 'Lateral Movement' ? 1.22 :
+      mitre.stage === 'Defense Evasion' ? 1.18 :
+      mitre.stage === 'Persistence' ? 1.10 :
+      mitre.stage === 'Execution' ? 1.05 : 0.92;
     
-    // Layer 1: Isolation Forest metric anomaly (0.12 - 0.95)
-    const layer1IF = Math.min(0.96, Math.max(0.12,
-      Math.random() * 0.58 + nodeBonus + (targetNode.isHoneypot ? 0.20 : 0)));
+    // Layer 1: Isolation Forest metric anomaly (0.15 - 0.98)
+    const layer1IF = Math.min(0.98, Math.max(0.15,
+      Math.random() * 0.48 + nodeBonus + (targetNode.isHoneypot ? 0.22 : 0)));
     
-    // Layer 2: Markov Chain sequential state transition anomaly (0.12 - 0.95)
-    const layer2MC = Math.min(0.96, Math.max(0.12,
-      Math.random() * 0.52 + (targetNode.type === 'Admin' ? 0.22 : targetNode.type === 'Server' ? 0.14 : 0.05)));
+    // Layer 2: Markov Chain sequential state transition anomaly (0.15 - 0.98)
+    const layer2MC = Math.min(0.98, Math.max(0.15,
+      Math.random() * 0.46 + (targetNode.type === 'Admin' ? 0.26 : targetNode.type === 'Server' ? 0.18 : 0.08)));
     
     // Surface Criticality Multiplier from AlertFusion specification (simulation/detection/alert_fusion.py)
     // e.g. outbound_transfer=1.5, log_clearing=1.4, pass_the_hash=1.3, process_injection=1.3
@@ -140,11 +150,11 @@ export class SimulationEngine {
     
     // Bayesian Risk Weight prior for this node on the targeted surface (uniform baseline is ~0.0667)
     const bayesianRiskWeight = targetNode.bayesianWeights[selectedSurface] || 0.0667;
-    const bayesianMultiplier = 1.0 + Math.max(-0.15, (bayesianRiskWeight - 0.0667) * 2.0);
+    const bayesianMultiplier = 1.0 + Math.max(-0.15, (bayesianRiskWeight - 0.0667) * 2.2);
 
-    // Fused Score calculation aligned with AlertFusion: (w_if * IF + w_mc * MC) * surface_multiplier * bayesian_multiplier
+    // Fused Score calculation aligned with AlertFusion: (w_if * IF + w_mc * MC) * surface_multiplier * stage_multiplier * bayesian_multiplier
     const baseFused = (layer1IF * 0.5 + layer2MC * 0.5);
-    const rawFusedScore = baseFused * surfaceWeight * bayesianMultiplier;
+    const rawFusedScore = baseFused * (surfaceWeight * 0.85 + 0.18) * stageMultiplier * bayesianMultiplier;
     const fusedScore = Number(Math.min(0.99, Math.max(0.08, rawFusedScore)).toFixed(3));
 
     const isDetected = fusedScore > 0.48 && !rejectedByConsistency;
