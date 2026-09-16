@@ -17,7 +17,7 @@ import { PredictionPanel } from './components/PredictionPanel';
 import { BanditHeatmap } from './components/BanditHeatmap';
 import { ExperimentTable } from './components/ExperimentTable';
 import { ArchitectureBenchmark } from './components/ArchitectureBenchmark';
-import { ConditionId, SimNode } from './types';
+import { ConditionId, SimNode, NetworkEdge } from './types';
 import { soundFx } from './utils/audio';
 import {
   Play,
@@ -391,18 +391,36 @@ export default function App() {
   // Cyber Architecture Customization Handlers
   const handleAddNode = (newNode: SimNode) => {
     const currentNodes = engine.getState().nodes;
-    engine.setState({ nodes: [...currentNodes, newNode] });
+    const currentRound = engine.getState().currentRound;
+    const updatedLogs = [
+      `[TOPOLOGY] Added node '${newNode.name}' (${newNode.type}). Continuing telemetry at Round ${currentRound}.`,
+      ...engine.getState().logs.slice(0, 99),
+    ];
+    engine.setState({
+      nodes: [...currentNodes, newNode],
+      logs: updatedLogs,
+    });
     setSimState({ ...engine.getState() });
     setSelectedNodeId(newNode.id);
     setSelectedPresetId('custom');
   };
 
   const handleDeleteNode = (nodeId: string) => {
-    const currentNodes = engine.getState().nodes.filter((n) => n.id !== nodeId);
-    const currentEdges = engine.getState().edges.filter(
+    const state = engine.getState();
+    const targetNode = state.nodes.find((n) => n.id === nodeId);
+    const currentNodes = state.nodes.filter((n) => n.id !== nodeId);
+    const currentEdges = state.edges.filter(
       (e) => e.source !== nodeId && e.target !== nodeId
     );
-    engine.setState({ nodes: currentNodes, edges: currentEdges });
+    const updatedLogs = [
+      `[TOPOLOGY] Decommissioned node '${targetNode?.name || nodeId}'. Continuing telemetry at Round ${state.currentRound}.`,
+      ...state.logs.slice(0, 99),
+    ];
+    engine.setState({
+      nodes: currentNodes,
+      edges: currentEdges,
+      logs: updatedLogs,
+    });
     if (selectedNodeId === nodeId) {
       setSelectedNodeId(currentNodes[0]?.id || null);
     }
@@ -419,7 +437,8 @@ export default function App() {
   };
 
   const handleAddEdge = (sourceId: string, targetId: string) => {
-    const currentEdges = engine.getState().edges;
+    const state = engine.getState();
+    const currentEdges = state.edges;
     const exists = currentEdges.some(
       (e) =>
         (e.source === sourceId && e.target === targetId) ||
@@ -427,19 +446,34 @@ export default function App() {
     );
     if (!exists) {
       const newEdge = { source: sourceId, target: targetId, bandwidth: '10 Gbps' };
-      engine.setState({ edges: [...currentEdges, newEdge] });
+      const updatedLogs = [
+        `[TOPOLOGY] Wired link [${sourceId}] <-> [${targetId}]. Continuing telemetry at Round ${state.currentRound}.`,
+        ...state.logs.slice(0, 99),
+      ];
+      engine.setState({
+        edges: [...currentEdges, newEdge],
+        logs: updatedLogs,
+      });
       setSimState({ ...engine.getState() });
       setSelectedPresetId('custom');
     }
   };
 
   const handleDeleteEdge = (sourceId: string, targetId: string) => {
-    const currentEdges = engine.getState().edges.filter(
+    const state = engine.getState();
+    const currentEdges = state.edges.filter(
       (e) =>
         !(e.source === sourceId && e.target === targetId) &&
         !(e.source === targetId && e.target === sourceId)
     );
-    engine.setState({ edges: currentEdges });
+    const updatedLogs = [
+      `[TOPOLOGY] Severed link [${sourceId}] -/- [${targetId}]. Continuing telemetry at Round ${state.currentRound}.`,
+      ...state.logs.slice(0, 99),
+    ];
+    engine.setState({
+      edges: currentEdges,
+      logs: updatedLogs,
+    });
     setSimState({ ...engine.getState() });
     setSelectedPresetId('custom');
   };
@@ -455,13 +489,49 @@ export default function App() {
   const handleLoadPreset = (presetId: string) => {
     const preset = ARCHITECTURE_PRESETS.find((p) => p.id === presetId);
     if (preset) {
+      // Defensive network topology changed: reset everything to start from the beginning
+      const freshNodes: SimNode[] = preset.nodes.map((n) => ({
+        ...n,
+        status: 'normal',
+        lastDetectedRound: undefined,
+        compromisedSurface: undefined,
+        bayesianWeights: { ...n.bayesianWeights },
+      }));
+      const freshEdges: NetworkEdge[] = preset.edges.map((e) => ({ ...e }));
+
       engine.setState({
-        nodes: preset.nodes,
-        edges: preset.edges,
+        currentRound: 0,
+        nodes: freshNodes,
+        edges: freshEdges,
+        alerts: [],
+        predictions: [],
+        rollingMttdBuffer: [],
+        attackStartRound: null,
+        totalAlertCount: 0,
+        simMttdValues: { A: 140, B: 90, C: 75, D: 65, E: 30 },
+        logs: [
+          `[SYSTEM] Architecture reconfigured to '${preset.name}'. Simulation restarted from baseline (Round 0).`,
+        ],
+        mttdHistory: [
+          {
+            round: 0,
+            ConditionA: 145,
+            ConditionB: 95,
+            ConditionC: 80,
+            ConditionD: 70,
+            ConditionE: 35,
+            ConditionF: 36,
+          },
+        ],
       });
-      setSelectedNodeId(preset.nodes[0]?.id || null);
+
+      setSelectedNodeId(freshNodes[0]?.id || null);
       setSelectedPresetId(presetId);
       setSimState({ ...engine.getState() });
+
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ action: 'reset' }));
+      }
     }
   };
 
@@ -804,6 +874,7 @@ export default function App() {
                   onLoadPreset={handleLoadPreset}
                   onInjectAttack={handleInjectAttack}
                   honeypotBroadcastActive={simState.nodes.some(n => n.isHoneypot && n.status === 'under_attack')}
+                  onOpenScorecard={() => setActiveTab('audit')}
                 />
               </div>
 
@@ -866,6 +937,11 @@ export default function App() {
               edges={simState.edges}
               metrics={simState.metrics}
               currentRound={simState.currentRound}
+              mttdHistory={simState.mttdHistory}
+              alerts={simState.alerts}
+              predictions={simState.predictions}
+              activeCondition={simState.activeCondition}
+              selectedPresetId={selectedPresetId}
             />
 
             {/* Simulation Event Log */}

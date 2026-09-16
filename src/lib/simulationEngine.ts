@@ -1,5 +1,5 @@
 import { SimulationState, SimNode, AlertEvent, StagePrediction, UcbSurfaceStats, AttackerProfileType, AttackSurface } from '../types';
-import { MITRE_SURFACE_MAP, ATTACK_SURFACES } from '../data/mitre';
+import { MITRE_SURFACE_MAP, ATTACK_SURFACES, SURFACE_CRITICALITY_WEIGHTS } from '../data/mitre';
 
 export class SimulationEngine {
   private state: SimulationState;
@@ -118,22 +118,34 @@ export class SimulationEngine {
       }
     }
 
-    // 4. Two-Layer Detection (Isolation Forest + Markov Chain + Bayesian Risk)
-    // Detection probability varies by node type 
-    // not by surface, removing structural bias
+    // 4. Two-Layer Detection (Isolation Forest + Markov Chain + MITRE Surface Criticality + Bayesian Risk)
+    // Detection sensitivity varies by asset criticality and attack technique impact
     const nodeBonus = targetNode.type === 'Admin' 
-      ? 0.25 
+      ? 0.20 
       : targetNode.type === 'Server' 
-      ? 0.15 
-      : 0.08;
+      ? 0.12 
+      : 0.05;
     
-    const layer1IF = Math.min(1.0, Math.max(0.1,
-      Math.random() * 0.55 + nodeBonus));
-    const layer2MC = Math.min(1.0, Math.max(0.1, Math.random() * 0.4 + (targetNode.type === 'Admin' ? 0.3 : 0.1)));
+    // Layer 1: Isolation Forest metric anomaly (0.12 - 0.95)
+    const layer1IF = Math.min(0.96, Math.max(0.12,
+      Math.random() * 0.58 + nodeBonus + (targetNode.isHoneypot ? 0.20 : 0)));
     
-    const bayesianRiskWeight = targetNode.bayesianWeights[selectedSurface] || 0.06;
-    // Fused Score modulation
-    const fusedScore = Math.min(0.99, (layer1IF * 0.4 + layer2MC * 0.4) + (bayesianRiskWeight * 1.8));
+    // Layer 2: Markov Chain sequential state transition anomaly (0.12 - 0.95)
+    const layer2MC = Math.min(0.96, Math.max(0.12,
+      Math.random() * 0.52 + (targetNode.type === 'Admin' ? 0.22 : targetNode.type === 'Server' ? 0.14 : 0.05)));
+    
+    // Surface Criticality Multiplier from AlertFusion specification (simulation/detection/alert_fusion.py)
+    // e.g. outbound_transfer=1.5, log_clearing=1.4, pass_the_hash=1.3, process_injection=1.3
+    const surfaceWeight = SURFACE_CRITICALITY_WEIGHTS[selectedSurface] || 1.0;
+    
+    // Bayesian Risk Weight prior for this node on the targeted surface (uniform baseline is ~0.0667)
+    const bayesianRiskWeight = targetNode.bayesianWeights[selectedSurface] || 0.0667;
+    const bayesianMultiplier = 1.0 + Math.max(-0.15, (bayesianRiskWeight - 0.0667) * 2.0);
+
+    // Fused Score calculation aligned with AlertFusion: (w_if * IF + w_mc * MC) * surface_multiplier * bayesian_multiplier
+    const baseFused = (layer1IF * 0.5 + layer2MC * 0.5);
+    const rawFusedScore = baseFused * surfaceWeight * bayesianMultiplier;
+    const fusedScore = Number(Math.min(0.99, Math.max(0.08, rawFusedScore)).toFixed(3));
 
     const isDetected = fusedScore > 0.48 && !rejectedByConsistency;
 
@@ -154,7 +166,7 @@ export class SimulationEngine {
       });
     }
 
-    // 6. Update Bayesian Risk Weight Vector per Node
+    // 6. Update Bayesian Risk Weight Vector and Containment Status per Node
     this.state.nodes = this.state.nodes.map((node) => {
       if (node.id === targetNode.id) {
         const currentWeights = { ...node.bayesianWeights };
@@ -181,6 +193,15 @@ export class SimulationEngine {
           lastDetectedRound: isDetected ? round : node.lastDetectedRound,
         };
       }
+
+      // Containment recovery window: nodes return to normal status after 3 rounds of no detection
+      if (node.status === 'under_attack' && node.lastDetectedRound && round - node.lastDetectedRound >= 3) {
+        return {
+          ...node,
+          status: 'normal',
+        };
+      }
+
       return node;
     });
 
@@ -253,6 +274,7 @@ export class SimulationEngine {
 
     // 9. Alert Generation & Logging
     if (isDetected || rejectedByConsistency) {
+      const isCritical = fusedScore >= 0.75;
       const newAlert: AlertEvent = {
         id: `alert-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         round,
@@ -271,6 +293,8 @@ export class SimulationEngine {
           ? 'Consistency Rejection & Alert'
           : targetNode.isHoneypot
           ? 'Honeypot Deception Broadcast'
+          : isCritical
+          ? 'Critical Isolation & Network Disconnect'
           : 'Dynamic Isolation & Weight Boost',
         isHoneypotCapture: targetNode.isHoneypot && !rejectedByConsistency,
         rejectedByConsistency,
@@ -279,7 +303,7 @@ export class SimulationEngine {
       this.state.alerts = [newAlert, ...this.state.alerts.slice(0, 49)];
       this.state.totalAlertCount += 1;
       this.addLog(
-        `[ALERT R${round}] Node: ${targetNode.name} | MITRE: ${mitre.techniqueCode} (${mitre.stage}) | Fused Score: ${fusedScore.toFixed(2)} | Action: ${newAlert.actionTaken}`
+        `[ALERT R${round}] ${isCritical ? 'CRITICAL ' : ''}Node: ${targetNode.name} | MITRE: ${mitre.techniqueCode} (${mitre.stage}) | Fused Score: ${(fusedScore * 100).toFixed(0)}% | Action: ${newAlert.actionTaken}`
       );
     }
 

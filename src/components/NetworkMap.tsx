@@ -45,6 +45,7 @@ export interface NetworkMapProps {
   onLoadPreset?: (presetId: string) => void;
   onInjectAttack?: (type: 'apt29' | 'pth' | 'exfil' | 'decoy_probe') => void;
   honeypotBroadcastActive?: boolean;
+  onOpenScorecard?: () => void;
 }
 
 export const NetworkMap: React.FC<NetworkMapProps> = ({
@@ -62,6 +63,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
   onLoadPreset,
   onInjectAttack,
   honeypotBroadcastActive = false,
+  onOpenScorecard,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -691,6 +693,17 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
               <Sliders className="w-3 h-3" />
               Inspector
             </button>
+
+            {onOpenScorecard && (
+              <button
+                onClick={onOpenScorecard}
+                className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 rounded flex items-center gap-1 transition-colors"
+                title="View live Topology & Resilience Scorecard in Security Audit tab"
+              >
+                <Activity className="w-3 h-3 text-cyan-400" />
+                Scorecard
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -94,3 +94,25 @@ export const MITRE_SURFACE_MAP: Record<AttackSurface, MitreMapping> = {
 };
 
 export const ATTACK_SURFACES: AttackSurface[] = Object.keys(MITRE_SURFACE_MAP) as AttackSurface[];
+
+/**
+ * Surface Criticality Weights from AlertFusion specification (simulation/detection/alert_fusion.py).
+ * 1.0 = baseline risk; >1.0 = high-impact/critical risk techniques (e.g. Exfiltration 1.5x, Log Clearing 1.4x, PtH 1.3x).
+ */
+export const SURFACE_CRITICALITY_WEIGHTS: Record<AttackSurface, number> = {
+  network_scanning: 0.8,
+  service_enumeration: 0.8,
+  os_fingerprinting: 0.8,
+  credential_access: 1.2,
+  script_execution: 1.1,
+  scheduled_task: 1.0,
+  process_injection: 1.3,
+  registry_persistence: 1.1,
+  account_creation: 1.2,
+  log_clearing: 1.4,
+  lateral_movement: 1.3,
+  pass_the_hash: 1.3,
+  outbound_transfer: 1.5,
+  data_compression: 1.2,
+  encrypted_channel: 1.2,
+};
