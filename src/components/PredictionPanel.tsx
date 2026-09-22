@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StagePrediction } from '../types';
+import { MITRE_SURFACE_MAP } from '../data/mitre';
 import { Target, ArrowRight, ShieldCheck, Zap, Radio, GitBranch, Cpu, Maximize2, Minimize2, Activity, Layers } from 'lucide-react';
 
 interface PredictionPanelProps {
@@ -103,11 +104,11 @@ export const PredictionPanel: React.FC<PredictionPanelProps> = ({ predictions })
               >
                 {/* Node Target & Confidence Meter */}
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-slate-200 font-semibold flex items-center gap-1.5 text-[11px]">
-                    <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
-                    Target Node: {pred.nodeId}
+                  <span className="text-slate-200 font-semibold flex items-center gap-1.5 text-[11px] truncate max-w-[280px]">
+                    <GitBranch className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span className="truncate">Target: {pred.nodeName || pred.nodeId}</span>
                   </span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[10px] text-slate-400">Likelihood:</span>
                     <span className="px-1.5 py-0.2 rounded bg-slate-900 border border-slate-800 text-cyan-400 text-[10px] font-semibold">
                       {(pred.confidence * 100).toFixed(0)}%
@@ -136,20 +137,25 @@ export const PredictionPanel: React.FC<PredictionPanelProps> = ({ predictions })
                 <div className="mt-2.5 pt-2 border-t border-slate-800/80">
                   <div className="flex items-center justify-between mb-1.5 text-[10px]">
                     <span className="text-slate-400 flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" /> Recommended Pre-Hardening:
+                      <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" /> Proactive Pre-Hardening:
                     </span>
-                    <span className="text-slate-400">Weights adjusted</span>
+                    <span className="text-cyan-400 font-medium text-[9.5px]">Bayesian weights actively boosted</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {pred.recommendedPreHardening.map((surf) => (
-                      <span
-                        key={surf}
-                        className="px-2 py-0.5 rounded bg-slate-900 text-cyan-400 border border-slate-800 text-[9.5px] uppercase font-medium flex items-center gap-1"
-                      >
-                        <Zap className="w-2.5 h-2.5 text-cyan-400" />
-                        {surf.replace(/_/g, ' ')}
-                      </span>
-                    ))}
+                    {pred.recommendedPreHardening.map((surf) => {
+                      const m = MITRE_SURFACE_MAP[surf];
+                      return (
+                        <span
+                          key={surf}
+                          className="px-2 py-0.5 rounded bg-slate-900 text-cyan-400 border border-slate-800 text-[9.5px] font-medium flex items-center gap-1"
+                          title={`${m?.techniqueCode}: ${m?.techniqueName}`}
+                        >
+                          <Zap className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
+                          <span className="text-slate-300 font-semibold">{m?.techniqueCode || ''}</span>
+                          <span>{m?.label || surf.replace(/_/g, ' ')}</span>
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

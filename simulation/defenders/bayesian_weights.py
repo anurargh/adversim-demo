@@ -191,16 +191,66 @@ class BayesianWeightVector:
             means[t] = a / (a + b)
         return means
 
-    def get_weights(self) -> Dict[str, float]:
+    def get_bayesian_risk(self) -> Dict[str, float]:
         """
-        Returns normalized surface weight distribution (sums to 1.0 across 15 techniques).
-        Used for setting defense resource allocation and detection thresholds.
+        Returns normalized Bayesian posterior risk distribution across the 15 attack surfaces.
+        Based strictly on evidence: E[X_s] = alpha_s / (alpha_s + beta_s), normalized so sum = 1.0.
+        Can concentrate when evidence indicates high adversarial activity on specific vectors.
         """
         means = self.get_mean_weights()
         total_mean = sum(means.values())
         if total_mean > 0:
             return {t: round(m / total_mean, 4) for t, m in means.items()}
         return {t: round(1.0 / len(self.technique_keys), 4) for t in self.technique_keys}
+
+    def get_defensive_allocation(
+        self,
+        min_floor: float = 0.025,
+        total_budget: float = 1.0,
+        criticality_weights: Optional[Dict[str, float]] = None
+    ) -> Dict[str, float]:
+        """
+        Calculates defensive resource allocation under a finite resource budget.
+        Pipeline:
+            bayesianRisk[technique] + vulnerability/criticality + uncertainty
+                ↓
+            defensive allocation policy
+                ↓
+            finite allocation budget (sum = total_budget)
+                ↓
+            defensive coverage[technique]
+
+        Mathematically verifies: sum(defensive_allocation) = total_budget (100%).
+        When allocation increases on one vector, others proportionally de-allocate.
+        """
+        num_surfaces = len(self.technique_keys)
+        reserved_budget = num_surfaces * min_floor
+        discretionary_budget = max(0.0, total_budget - reserved_budget)
+
+        risk = self.get_bayesian_risk()
+        demands = {}
+        for t in self.technique_keys:
+            crit = (criticality_weights or {}).get(t, 1.0)
+            # Demand is driven by evidence-based posterior risk and surface criticality
+            demands[t] = max(0.001, risk.get(t, 1.0 / num_surfaces) * crit)
+
+        total_demand = sum(demands.values())
+        allocations = {}
+        for t in self.technique_keys:
+            share = demands[t] / total_demand if total_demand > 0 else 1.0 / num_surfaces
+            allocations[t] = min_floor + discretionary_budget * share
+
+        # Ensure strict budget conservation
+        total_allocated = sum(allocations.values())
+        if total_allocated > 0:
+            return {t: round((v / total_allocated) * total_budget, 4) for t, v in allocations.items()}
+        return {t: round(total_budget / num_surfaces, 4) for t in self.technique_keys}
+
+    def get_weights(self) -> Dict[str, float]:
+        """
+        Legacy alias returning normalized defensive allocation.
+        """
+        return self.get_defensive_allocation()
 
     def to_vector(self) -> np.ndarray:
         """

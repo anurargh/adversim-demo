@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UcbSurfaceStats } from '../types';
+import { MITRE_SURFACE_MAP } from '../data/mitre';
 import { Cpu, Zap, Crosshair, BarChart2, Maximize2, Minimize2, Activity, Info } from 'lucide-react';
 
 interface BanditHeatmapProps {
@@ -89,7 +90,7 @@ export const BanditHeatmap: React.FC<BanditHeatmapProps> = ({ ucbStats }) => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-2 text-[11px] text-slate-400 gap-1">
           <span>Upper Confidence Bound: <code className="text-cyan-400 bg-slate-950 px-1 py-0.5 rounded border border-slate-800">UCB1 = μ_i + c · √(2·ln(N) / n_i)</code></span>
           <span className="text-slate-300">
-            Top Vector: <strong className="text-cyan-400">{topTarget?.mitreCode}</strong> ({topTarget?.surface.replace(/_/g, ' ')})
+            Top Vector: <strong className="text-cyan-400">{topTarget?.mitreCode}</strong> ({topTarget ? (MITRE_SURFACE_MAP[topTarget.surface]?.techniqueName || topTarget.surface.replace(/_/g, ' ')) : ''})
           </span>
         </div>
       </div>
@@ -99,6 +100,7 @@ export const BanditHeatmap: React.FC<BanditHeatmapProps> = ({ ucbStats }) => {
         {sorted.map((stat, idx) => {
           const fillWidth = Math.min(100, Math.max(8, (stat.ucbScore / maxScore) * 100));
           const isTopThree = idx < 3;
+          const mitreInfo = MITRE_SURFACE_MAP[stat.surface];
 
           return (
             <div
@@ -110,17 +112,25 @@ export const BanditHeatmap: React.FC<BanditHeatmapProps> = ({ ucbStats }) => {
               }`}
             >
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-200 font-medium flex items-center gap-1.5 truncate max-w-[200px]">
-                  <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-semibold ${
-                    isTopThree ? 'bg-slate-800 text-cyan-400 border border-slate-700' : 'bg-slate-900 text-slate-400 border border-slate-800'
-                  }`}>
-                    {stat.mitreCode}
+                <div className="flex flex-col truncate max-w-[210px]">
+                  <span className="text-slate-200 font-medium flex items-center gap-1.5 truncate">
+                    <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-semibold ${
+                      isTopThree ? 'bg-slate-800 text-cyan-400 border border-slate-700' : 'bg-slate-900 text-slate-400 border border-slate-800'
+                    }`}>
+                      {stat.mitreCode}
+                    </span>
+                    <span className="truncate font-semibold">{mitreInfo?.techniqueName || stat.surface.replace(/_/g, ' ')}</span>
                   </span>
-                  <span className="truncate">{stat.surface.replace(/_/g, ' ')}</span>
-                </span>
-                <span className="text-cyan-400 font-bold text-xs">
-                  {stat.ucbScore.toFixed(2)}
-                </span>
+                  <span className="text-[9.5px] text-slate-400 ml-0.5">
+                    {mitreInfo?.stage} • Vector: {stat.surface.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-cyan-400 font-bold text-xs block">
+                    {stat.ucbScore.toFixed(2)}
+                  </span>
+                  <span className="text-[9px] text-slate-500 uppercase">Score</span>
+                </div>
               </div>
 
               {/* Progress Needle Bar */}

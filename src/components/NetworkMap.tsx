@@ -642,6 +642,8 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
       fidelity: isHp ? newNodeFidelity : undefined,
       status: 'normal',
       fpr: Number(newNodeFpr.toFixed(4)),
+      bayesianRisk: generateInitialWeights(),
+      defensiveAllocation: generateInitialWeights(),
       bayesianWeights: generateInitialWeights(),
       x: 320 + (Math.random() - 0.5) * 100,
       y: 180 + (Math.random() - 0.5) * 80,

@@ -1,22 +1,26 @@
 import { SimNode, NetworkEdge, AblationCondition, AblationMetric, UcbSurfaceStats, AttackSurface } from '../types';
 import { MITRE_SURFACE_MAP, ATTACK_SURFACES } from './mitre';
 
+export function generateInitialRisk(): Record<AttackSurface, number> {
+  const base = 1 / ATTACK_SURFACES.length; // uniform start ≈ 0.0667
+  const risk: Record<string, number> = {};
+  ATTACK_SURFACES.forEach(surf => {
+    risk[surf] = Number(base.toFixed(4));
+  });
+  return risk as Record<AttackSurface, number>;
+}
+
+export function generateInitialDefensiveAllocation(): Record<AttackSurface, number> {
+  const base = 1 / ATTACK_SURFACES.length; // uniform start ≈ 0.0667
+  const alloc: Record<string, number> = {};
+  ATTACK_SURFACES.forEach(surf => {
+    alloc[surf] = Number(base.toFixed(4));
+  });
+  return alloc as Record<AttackSurface, number>;
+}
+
 export function generateInitialWeights(): Record<AttackSurface, number> {
-  const base = 1 / 15; // uniform start = 0.0667
-  const raw: Record<string, number> = {};
-  
-  ATTACK_SURFACES.forEach(surf => {
-    // ±40% random variation from uniform
-    raw[surf] = base * (0.6 + Math.random() * 0.8);
-  });
-  
-  // Normalize to sum to 1
-  const total = Object.values(raw).reduce((a, b) => a + b, 0);
-  ATTACK_SURFACES.forEach(surf => {
-    raw[surf] = Number((raw[surf] / total).toFixed(4));
-  });
-  
-  return raw as Record<AttackSurface, number>;
+  return generateInitialDefensiveAllocation();
 }
 
 export function getInitialNodes(): SimNode[] {
@@ -28,7 +32,9 @@ export function getInitialNodes(): SimNode[] {
       ip: '10.0.0.5',
       isHoneypot: false,
       status: 'normal',
-      fpr: Number((0.005 + Math.random() * 0.025).toFixed(4)),
+      fpr: 0.02,
+      bayesianRisk: generateInitialRisk(),
+      defensiveAllocation: generateInitialDefensiveAllocation(),
       bayesianWeights: generateInitialWeights(),
       x: 100,
       y: 110,
@@ -40,7 +46,9 @@ export function getInitialNodes(): SimNode[] {
       ip: '10.0.1.12',
       isHoneypot: false,
       status: 'normal',
-      fpr: Number((0.005 + Math.random() * 0.025).toFixed(4)),
+      fpr: 0.015,
+      bayesianRisk: generateInitialRisk(),
+      defensiveAllocation: generateInitialDefensiveAllocation(),
       bayesianWeights: generateInitialWeights(),
       x: 230,
       y: 90,
@@ -52,7 +60,9 @@ export function getInitialNodes(): SimNode[] {
       ip: '10.0.1.15',
       isHoneypot: false,
       status: 'normal',
-      fpr: Number((0.005 + Math.random() * 0.025).toFixed(4)),
+      fpr: 0.015,
+      bayesianRisk: generateInitialRisk(),
+      defensiveAllocation: generateInitialDefensiveAllocation(),
       bayesianWeights: generateInitialWeights(),
       x: 230,
       y: 240,
@@ -64,7 +74,9 @@ export function getInitialNodes(): SimNode[] {
       ip: '10.0.2.20',
       isHoneypot: false,
       status: 'normal',
-      fpr: Number((0.005 + Math.random() * 0.025).toFixed(4)),
+      fpr: 0.01,
+      bayesianRisk: generateInitialRisk(),
+      defensiveAllocation: generateInitialDefensiveAllocation(),
       bayesianWeights: generateInitialWeights(),
       x: 390,
       y: 160,
@@ -76,7 +88,9 @@ export function getInitialNodes(): SimNode[] {
       ip: '10.0.3.1',
       isHoneypot: false,
       status: 'normal',
-      fpr: Number((0.005 + Math.random() * 0.025).toFixed(4)),
+      fpr: 0.008,
+      bayesianRisk: generateInitialRisk(),
+      defensiveAllocation: generateInitialDefensiveAllocation(),
       bayesianWeights: generateInitialWeights(),
       x: 520,
       y: 90,
@@ -89,7 +103,9 @@ export function getInitialNodes(): SimNode[] {
       fidelity: 'Medium',
       isHoneypot: true,
       status: 'normal',
-      fpr: Number((0.005 + Math.random() * 0.025).toFixed(4)),
+      fpr: 0.001,
+      bayesianRisk: generateInitialRisk(),
+      defensiveAllocation: generateInitialDefensiveAllocation(),
       bayesianWeights: generateInitialWeights(),
       x: 390,
       y: 300,
@@ -102,7 +118,9 @@ export function getInitialNodes(): SimNode[] {
       fidelity: 'High',
       isHoneypot: true,
       status: 'normal',
-      fpr: Number((0.005 + Math.random() * 0.025).toFixed(4)),
+      fpr: 0.001,
+      bayesianRisk: generateInitialRisk(),
+      defensiveAllocation: generateInitialDefensiveAllocation(),
       bayesianWeights: generateInitialWeights(),
       x: 520,
       y: 260,
@@ -132,13 +150,13 @@ export const ARCHITECTURE_PRESETS = [
     name: 'Zero-Trust Mesh & SOC Hub',
     description: 'Full-mesh information sharing across all defender nodes with a central SOC Relay Hub for real-time risk propagation.',
     nodes: [
-      { id: 'node-soc', name: 'Central SOC Relay Hub', type: 'SOC' as const, ip: '10.0.0.1', isHoneypot: false, status: 'normal' as const, fpr: 0.005, bayesianWeights: generateInitialWeights(), x: 320, y: 170 },
-      { id: 'node-dmz-1', name: 'Web Gateway', type: 'DMZ' as const, ip: '10.0.0.5', isHoneypot: false, status: 'normal' as const, fpr: 0.02, bayesianWeights: generateInitialWeights(), x: 120, y: 70 },
-      { id: 'node-user-1', name: 'Workstation 01', type: 'User' as const, ip: '10.0.1.12', isHoneypot: false, status: 'normal' as const, fpr: 0.015, bayesianWeights: generateInitialWeights(), x: 120, y: 270 },
-      { id: 'node-server-1', name: 'DB Cluster', type: 'Server' as const, ip: '10.0.2.20', isHoneypot: false, status: 'normal' as const, fpr: 0.01, bayesianWeights: generateInitialWeights(), x: 520, y: 70 },
-      { id: 'node-admin-1', name: 'Admin Controller', type: 'Admin' as const, ip: '10.0.3.1', isHoneypot: false, status: 'normal' as const, fpr: 0.008, bayesianWeights: generateInitialWeights(), x: 520, y: 270 },
-      { id: 'node-honeypot-1', name: 'Decoy Trap 01', type: 'Honeypot' as const, ip: '10.0.9.1', fidelity: 'High' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianWeights: generateInitialWeights(), x: 320, y: 40 },
-      { id: 'node-honeypot-2', name: 'Decoy Trap 02', type: 'Honeypot' as const, ip: '10.0.9.2', fidelity: 'High' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianWeights: generateInitialWeights(), x: 320, y: 300 },
+      { id: 'node-soc', name: 'Central SOC Relay Hub', type: 'SOC' as const, ip: '10.0.0.1', isHoneypot: false, status: 'normal' as const, fpr: 0.005, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 320, y: 170 },
+      { id: 'node-dmz-1', name: 'Web Gateway', type: 'DMZ' as const, ip: '10.0.0.5', isHoneypot: false, status: 'normal' as const, fpr: 0.02, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 120, y: 70 },
+      { id: 'node-user-1', name: 'Workstation 01', type: 'User' as const, ip: '10.0.1.12', isHoneypot: false, status: 'normal' as const, fpr: 0.015, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 120, y: 270 },
+      { id: 'node-server-1', name: 'DB Cluster', type: 'Server' as const, ip: '10.0.2.20', isHoneypot: false, status: 'normal' as const, fpr: 0.01, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 520, y: 70 },
+      { id: 'node-admin-1', name: 'Admin Controller', type: 'Admin' as const, ip: '10.0.3.1', isHoneypot: false, status: 'normal' as const, fpr: 0.008, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 520, y: 270 },
+      { id: 'node-honeypot-1', name: 'Decoy Trap 01', type: 'Honeypot' as const, ip: '10.0.9.1', fidelity: 'High' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 320, y: 40 },
+      { id: 'node-honeypot-2', name: 'Decoy Trap 02', type: 'Honeypot' as const, ip: '10.0.9.2', fidelity: 'High' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 320, y: 300 },
     ],
     edges: [
       { source: 'node-soc', target: 'node-dmz-1', bandwidth: '10 Gbps' },
@@ -156,12 +174,12 @@ export const ARCHITECTURE_PRESETS = [
     name: 'Honeypot Perimeter Fortress',
     description: 'High density decoy honeypots protecting core servers to capture early reconnaissance and poison attacker learning.',
     nodes: [
-      { id: 'node-dmz-1', name: 'Web Ingress', type: 'DMZ' as const, ip: '10.0.0.5', isHoneypot: false, status: 'normal' as const, fpr: 0.02, bayesianWeights: generateInitialWeights(), x: 100, y: 170 },
-      { id: 'node-hp-1', name: 'Honey Web Gateway', type: 'Honeypot' as const, ip: '10.0.0.6', fidelity: 'High' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianWeights: generateInitialWeights(), x: 220, y: 80 },
-      { id: 'node-hp-2', name: 'Honey Auth Server', type: 'Honeypot' as const, ip: '10.0.1.99', fidelity: 'High' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianWeights: generateInitialWeights(), x: 220, y: 260 },
-      { id: 'node-server-1', name: 'Core DB', type: 'Server' as const, ip: '10.0.2.1', isHoneypot: false, status: 'normal' as const, fpr: 0.01, bayesianWeights: generateInitialWeights(), x: 420, y: 170 },
-      { id: 'node-hp-3', name: 'Honey DB Mirror', type: 'Honeypot' as const, ip: '10.0.2.2', fidelity: 'Medium' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianWeights: generateInitialWeights(), x: 420, y: 290 },
-      { id: 'node-admin-1', name: 'Domain Admin', type: 'Admin' as const, ip: '10.0.3.1', isHoneypot: false, status: 'normal' as const, fpr: 0.005, bayesianWeights: generateInitialWeights(), x: 560, y: 170 },
+      { id: 'node-dmz-1', name: 'Web Ingress', type: 'DMZ' as const, ip: '10.0.0.5', isHoneypot: false, status: 'normal' as const, fpr: 0.02, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 100, y: 170 },
+      { id: 'node-hp-1', name: 'Honey Web Gateway', type: 'Honeypot' as const, ip: '10.0.0.6', fidelity: 'High' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 220, y: 80 },
+      { id: 'node-hp-2', name: 'Honey Auth Server', type: 'Honeypot' as const, ip: '10.0.1.99', fidelity: 'High' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 220, y: 260 },
+      { id: 'node-server-1', name: 'Core DB', type: 'Server' as const, ip: '10.0.2.1', isHoneypot: false, status: 'normal' as const, fpr: 0.01, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 420, y: 170 },
+      { id: 'node-hp-3', name: 'Honey DB Mirror', type: 'Honeypot' as const, ip: '10.0.2.2', fidelity: 'Medium' as const, isHoneypot: true, status: 'normal' as const, fpr: 0.001, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 420, y: 290 },
+      { id: 'node-admin-1', name: 'Domain Admin', type: 'Admin' as const, ip: '10.0.3.1', isHoneypot: false, status: 'normal' as const, fpr: 0.005, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 560, y: 170 },
     ],
     edges: [
       { source: 'node-dmz-1', target: 'node-hp-1', bandwidth: '1 Gbps' },
@@ -178,11 +196,11 @@ export const ARCHITECTURE_PRESETS = [
     name: 'Flat Legacy Subnet (Minimal Sharing)',
     description: 'Minimal interconnectivity with no honeypots. Tests high MTTD and vulnerable cascading propagation.',
     nodes: [
-      { id: 'node-dmz-1', name: 'Legacy Router', type: 'DMZ' as const, ip: '192.168.1.1', isHoneypot: false, status: 'normal' as const, fpr: 0.03, bayesianWeights: generateInitialWeights(), x: 100, y: 170 },
-      { id: 'node-user-1', name: 'Office PC 01', type: 'User' as const, ip: '192.168.1.10', isHoneypot: false, status: 'normal' as const, fpr: 0.025, bayesianWeights: generateInitialWeights(), x: 260, y: 100 },
-      { id: 'node-user-2', name: 'Office PC 02', type: 'User' as const, ip: '192.168.1.11', isHoneypot: false, status: 'normal' as const, fpr: 0.025, bayesianWeights: generateInitialWeights(), x: 260, y: 240 },
-      { id: 'node-server-1', name: 'File Server', type: 'Server' as const, ip: '192.168.1.50', isHoneypot: false, status: 'normal' as const, fpr: 0.02, bayesianWeights: generateInitialWeights(), x: 440, y: 170 },
-      { id: 'node-admin-1', name: 'Admin Workstation', type: 'Admin' as const, ip: '192.168.1.100', isHoneypot: false, status: 'normal' as const, fpr: 0.015, bayesianWeights: generateInitialWeights(), x: 580, y: 170 },
+      { id: 'node-dmz-1', name: 'Legacy Router', type: 'DMZ' as const, ip: '192.168.1.1', isHoneypot: false, status: 'normal' as const, fpr: 0.03, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 100, y: 170 },
+      { id: 'node-user-1', name: 'Office PC 01', type: 'User' as const, ip: '192.168.1.10', isHoneypot: false, status: 'normal' as const, fpr: 0.025, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 260, y: 100 },
+      { id: 'node-user-2', name: 'Office PC 02', type: 'User' as const, ip: '192.168.1.11', isHoneypot: false, status: 'normal' as const, fpr: 0.025, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 260, y: 240 },
+      { id: 'node-server-1', name: 'File Server', type: 'Server' as const, ip: '192.168.1.50', isHoneypot: false, status: 'normal' as const, fpr: 0.02, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 440, y: 170 },
+      { id: 'node-admin-1', name: 'Admin Workstation', type: 'Admin' as const, ip: '192.168.1.100', isHoneypot: false, status: 'normal' as const, fpr: 0.015, bayesianRisk: generateInitialRisk(), defensiveAllocation: generateInitialDefensiveAllocation(), bayesianWeights: generateInitialWeights(), x: 580, y: 170 },
     ],
     edges: [
       { source: 'node-dmz-1', target: 'node-user-1', bandwidth: '100 Mbps' },

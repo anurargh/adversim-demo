@@ -19,6 +19,7 @@ export interface MitreMapping {
   surface: AttackSurface;
   techniqueCode: string;
   techniqueName: string;
+  label: string;
   stage: 'Reconnaissance' | 'Initial Access' | 'Execution' | 'Persistence' | 'Defense Evasion' | 'Lateral Movement' | 'Exfiltration';
 }
 
@@ -42,6 +43,11 @@ export interface SimNode {
   ip: string;
   fidelity?: 'Low' | 'Medium' | 'High';
   isHoneypot: boolean;
+  // Bayesian Posterior Risk: P(Threat | Evidence) representing evidence-based threat concentration
+  bayesianRisk: Record<AttackSurface, number>;
+  // Defensive Resource Allocation: finite defensive sensor/inspection coverage, strictly summing to 1.0 (100%)
+  defensiveAllocation: Record<AttackSurface, number>;
+  // Legacy / convenience alias mapping to defensiveAllocation
   bayesianWeights: Record<AttackSurface, number>;
   status: 'normal' | 'under_attack' | 'compromised' | 'isolated';
   lastDetectedRound?: number;
@@ -71,6 +77,7 @@ export interface AlertEvent {
   layer1Score: number;
   layer2Score: number;
   fusedScore: number;
+  threatSeverity?: number;
   actionTaken: string;
   isHoneypotCapture: boolean;
   rejectedByConsistency?: boolean;
@@ -78,6 +85,7 @@ export interface AlertEvent {
 
 export interface StagePrediction {
   nodeId: string;
+  nodeName?: string;
   currentStage: string;
   predictedNextStage: string;
   confidence: number; // 0 to 1

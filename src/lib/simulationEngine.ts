@@ -157,7 +157,7 @@ export class SimulationEngine {
     const rawFusedScore = baseFused * (surfaceWeight * 0.85 + 0.18) * stageMultiplier * bayesianMultiplier;
     const fusedScore = Number(Math.min(0.99, Math.max(0.08, rawFusedScore)).toFixed(3));
 
-    const isDetected = fusedScore > 0.48 && !rejectedByConsistency;
+    const isDetected = fusedScore > 0.40 && !rejectedByConsistency;
 
     // 5. Update Bandit UCB counters
     if (isBandit) {
@@ -177,42 +177,86 @@ export class SimulationEngine {
     }
 
     // 6. Update Bayesian Risk Weight Vector and Containment Status per Node
-    this.state.nodes = this.state.nodes.map((node) => {
-      if (node.id === targetNode.id) {
-        const currentWeights = { ...node.bayesianWeights };
+    const uniformBaseline = 1 / 15;
+    const decayFactor = 0.97;
 
-        // Reinforce detected surface, decay others by 0.995
+    this.state.nodes = this.state.nodes.map((node) => {
+      const currentWeights = { ...node.bayesianWeights };
+
+      if (node.id === targetNode.id) {
+        // Symmetric additive update: +0.04 if detected, +0.07 if evaded
+        // All other 14 surfaces decay toward uniform baseline (1/15) with decay factor 0.97
         ATTACK_SURFACES.forEach((surf) => {
-          if (surf === selectedSurface && isDetected) {
-            currentWeights[surf] = (currentWeights[surf] || 0.05) * 1.35;
+          if (surf === selectedSurface) {
+            currentWeights[surf] = (currentWeights[surf] || uniformBaseline) + (isDetected ? 0.04 : 0.07);
           } else {
-            currentWeights[surf] = (currentWeights[surf] || 0.05) * 0.995;
+            const w = currentWeights[surf] !== undefined ? currentWeights[surf] : uniformBaseline;
+            currentWeights[surf] = uniformBaseline + (w - uniformBaseline) * decayFactor;
           }
         });
 
-        // Normalize to sum to 1.0
-        const total = Object.values(currentWeights).reduce((a, b) => a + b, 0);
+        // Cap any single surface's normalized weight at 0.35 before renormalizing
+        let total = Object.values(currentWeights).reduce((a, b) => a + b, 0);
         ATTACK_SURFACES.forEach((surf) => {
-          currentWeights[surf] = Number((currentWeights[surf] / total).toFixed(4));
+          currentWeights[surf] = currentWeights[surf] / (total || 1);
         });
+
+        ATTACK_SURFACES.forEach((surf) => {
+          if (currentWeights[surf] > 0.35) {
+            currentWeights[surf] = 0.35;
+          }
+        });
+
+        total = Object.values(currentWeights).reduce((a, b) => a + b, 0);
+        ATTACK_SURFACES.forEach((surf) => {
+          currentWeights[surf] = Number((currentWeights[surf] / (total || 1)).toFixed(4));
+        });
+
+        // Only set node.status to 'under_attack' when fusedScore >= 0.6
+        let nextStatus = node.status;
+        if (fusedScore >= 0.6 && !rejectedByConsistency) {
+          nextStatus = 'under_attack';
+        }
+        const nextLastDetected = isDetected ? round : node.lastDetectedRound;
+
+        // Containment recovery window: nodes return to normal status after 3 rounds of no detection
+        if (nextStatus === 'under_attack' && nextLastDetected && round - nextLastDetected >= 3) {
+          nextStatus = 'normal';
+        }
 
         return {
           ...node,
           bayesianWeights: currentWeights,
-          status: isDetected ? 'under_attack' : node.status,
-          lastDetectedRound: isDetected ? round : node.lastDetectedRound,
+          status: nextStatus,
+          lastDetectedRound: nextLastDetected,
         };
       }
+
+      // Non-targeted nodes: all 15 surfaces decay toward uniform baseline (1/15) using 0.97
+      ATTACK_SURFACES.forEach((surf) => {
+        const w = currentWeights[surf] !== undefined ? currentWeights[surf] : uniformBaseline;
+        currentWeights[surf] = uniformBaseline + (w - uniformBaseline) * decayFactor;
+      });
+
+      // Normalize non-targeted node weights
+      const total = Object.values(currentWeights).reduce((a, b) => a + b, 0);
+      ATTACK_SURFACES.forEach((surf) => {
+        currentWeights[surf] = Number((currentWeights[surf] / (total || 1)).toFixed(4));
+      });
 
       // Containment recovery window: nodes return to normal status after 3 rounds of no detection
       if (node.status === 'under_attack' && node.lastDetectedRound && round - node.lastDetectedRound >= 3) {
         return {
           ...node,
+          bayesianWeights: currentWeights,
           status: 'normal',
         };
       }
 
-      return node;
+      return {
+        ...node,
+        bayesianWeights: currentWeights,
+      };
     });
 
     // 7. Collaborative Intelligence Server (every K=5 rounds or immediate honeypot capture)
@@ -238,12 +282,12 @@ export class SimulationEngine {
           aggregateWeights[surf] /= totalInvFpr;
         });
 
-        // Each node blends: 0.7 * local + 0.3 * aggregated
+        // Each node blends: 0.85 * local + 0.15 * aggregated
         this.state.nodes = this.state.nodes.map((n) => {
           if (n.isHoneypot) return n;
           const blended: Record<AttackSurface, number> = {} as any;
           ATTACK_SURFACES.forEach((surf) => {
-            blended[surf] = Number((0.7 * n.bayesianWeights[surf] + 0.3 * aggregateWeights[surf]).toFixed(4));
+            blended[surf] = Number((0.85 * n.bayesianWeights[surf] + 0.15 * aggregateWeights[surf]).toFixed(4));
           });
           return { ...n, bayesianWeights: blended };
         });

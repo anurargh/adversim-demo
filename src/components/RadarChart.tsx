@@ -94,7 +94,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
   });
 
   const maxTech = [...data].sort((a, b) => b.val - a.val)[0];
-  const hasCriticalSpike = data.some((d) => d.val > 0.14);
+  const hasCriticalSpike = data.some((d) => d.val > 0.35);
 
   const drawRadar = useCallback(() => {
     if (!svgRef.current) return;
@@ -174,7 +174,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
         anchor = Math.cos(angle) > 0 ? 'start' : 'end';
       }
 
-      const isCritical = d.val > 0.14;
+      const isCritical = d.val > 0.35;
 
       const textNode = g.append('text')
         .attr('x', labelX)
@@ -218,7 +218,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
       const r = rScale(d.val);
       const vx = r * Math.cos(angle);
       const vy = r * Math.sin(angle);
-      const isCritical = d.val > 0.14;
+      const isCritical = d.val > 0.35;
 
       if (isCritical) {
         // Critical Ping Flare
@@ -344,7 +344,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
               </div>
               <div className="text-right">
                 <span className="text-[10px] text-slate-400 block">Bayesian Density</span>
-                <span className={`text-xs font-bold ${(hoveredTech.val * 100) > 14 ? 'text-rose-400' : 'text-cyan-400'}`}>
+                <span className={`text-xs font-bold ${(hoveredTech.val * 100) > 35 ? 'text-rose-400' : 'text-cyan-400'}`}>
                   {(hoveredTech.val * 100).toFixed(1)}%
                 </span>
               </div>
@@ -366,7 +366,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
             <div className="flex-1 overflow-y-auto space-y-1.5 my-2 pr-1 min-h-0 text-[11px]">
               {[...data].sort((a, b) => b.val - a.val).map((tech) => {
                 const pct = (tech.val * 100);
-                const isCrit = pct > 14;
+                const isCrit = pct > 35;
                 return (
                   <div
                     key={tech.key}
@@ -394,7 +394,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
                       <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                         <div
                           className={`h-full ${isCrit ? 'bg-rose-500' : 'bg-cyan-400'}`}
-                          style={{ width: `${Math.min(100, (pct / 25) * 100)}%` }}
+                          style={{ width: `${Math.min(100, (pct / 35) * 100)}%` }}
                         />
                       </div>
                       <span className={`font-semibold text-[11px] w-12 text-right ${isCrit ? 'text-rose-400' : 'text-cyan-400'}`}>
@@ -423,7 +423,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
-            Spike (&gt;14%)
+            Spike (&gt;35%)
           </span>
         </div>
 

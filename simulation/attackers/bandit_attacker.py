@@ -33,10 +33,12 @@ class BanditAttacker:
         self.success_count: Dict[str, float] = {t: 0.0 for t in self.techniques}
         self.total_attempts: int = 0
 
-    def compute_ucb_score(self, technique: str) -> float:
+    def compute_ucb_score(self, technique: str, defense_weight: Optional[float] = None) -> float:
         """
         Computes Upper Confidence Bound (UCB1) score:
-        UCB = avg_success + sqrt(2 * log(total_attempts) / attempts)
+        UCB = effective_payoff + sqrt(2 * log(total_attempts) / attempts)
+        Where effective_payoff accounts for empirical evasion success and relative vulnerability:
+        vulnerability = sqrt(baseline_weight / defense_weight).
         Unvisited techniques (attempts == 0) return infinity to force exploration.
         """
         attempts = self.attempt_count[technique]
@@ -46,18 +48,30 @@ class BanditAttacker:
         avg_success = self.success_count[technique] / attempts
         total = max(1, self.total_attempts)
         exploration = math.sqrt((2.0 * math.log(total)) / attempts)
-        return avg_success + exploration
 
-    def get_ucb_scores(self) -> Dict[str, float]:
+        if defense_weight is not None and defense_weight > 0:
+            baseline = 1.0 / len(self.techniques)
+            vulnerability = math.sqrt(baseline / max(0.01, defense_weight))
+            effective_payoff = avg_success * vulnerability
+        else:
+            effective_payoff = avg_success
+
+        return effective_payoff + exploration
+
+    def get_ucb_scores(self, defense_weights: Optional[Dict[str, float]] = None) -> Dict[str, float]:
         """Returns current UCB scores for all 15 MITRE attack surfaces."""
-        return {t: self.compute_ucb_score(t) for t in self.techniques}
+        return {
+            t: self.compute_ucb_score(t, defense_weight=(defense_weights.get(t) if defense_weights else None))
+            for t in self.techniques
+        }
 
-    def pick_technique(self, round_number: int) -> str:
+    def pick_technique(self, round_number: int, defense_weights: Optional[Dict[str, float]] = None) -> str:
         """
         Selects the attack technique with the highest UCB score.
+        Incorporates current defensive allocation to exploit under-defended surfaces.
         Prints UCB score table every 10 rounds for verification.
         """
-        scores = self.get_ucb_scores()
+        scores = self.get_ucb_scores(defense_weights=defense_weights)
 
         # Find maximum score and break ties randomly
         max_score = max(scores.values())
@@ -149,8 +163,8 @@ class BanditAttacker:
         if technique in self.attempt_count:
             self.attempt_count[technique] += 1
             self.total_attempts += 1
-            # Weighted reward factoring in live execution success and evasion
-            effective_reward = reward if not was_detected else max(0.0, reward - 0.5)
+            # Reward for attacker requires successful execution and evasion (0 if detected)
+            effective_reward = reward if not was_detected else 0.0
             self.success_count[technique] += effective_reward
 
     def probe_nodes(self, node_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

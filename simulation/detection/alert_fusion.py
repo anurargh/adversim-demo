@@ -61,16 +61,19 @@ class AlertFusion:
         if_score: float,
         markov_log_prob: float,
         technique: str = "script_execution",
-        threshold_override: Optional[float] = None
+        threshold_override: Optional[float] = None,
+        defensive_allocation: Optional[float] = None,
+        asset_sensitivity: float = 1.0,
     ) -> Dict[str, Any]:
         """
-        Calculates fused score and alert determination.
+        Calculates fused score, alert determination, and evidence-grounded threat severity.
         fused_score = (w_if * if_score + w_markov * markov_score) * surface_weight
+        threat_severity = fused_score * surface_weight * asset_sensitivity
         """
         markov_score = self.convert_markov_logprob_to_score(markov_log_prob)
         surface_weight = self.surface_weights.get(technique, 1.0)
 
-        # Base weighted sum
+        # Base weighted anomaly evidence
         base_fused = (self.weight_if * if_score) + (self.weight_markov * markov_score)
         
         # Apply surface risk multiplier
@@ -80,13 +83,20 @@ class AlertFusion:
         threshold = threshold_override if threshold_override is not None else self.default_threshold
         is_alert = fused_score >= threshold
 
+        # Calculate threat severity based on detector evidence, asset value, and technique criticality
+        raw_severity = fused_score * (surface_weight / 1.0) * (asset_sensitivity / 1.0)
+        threat_severity = round(min(1.0, max(0.0, raw_severity)), 4)
+
         return {
             "fused_score": fused_score,
+            "threat_severity": threat_severity,
             "is_alert": is_alert,
             "if_score": round(if_score, 4),
             "markov_score": markov_score,
             "markov_log_prob": round(markov_log_prob, 4),
             "surface_weight": surface_weight,
+            "defensive_allocation": defensive_allocation,
+            "asset_sensitivity": asset_sensitivity,
             "technique": technique,
             "threshold": threshold,
         }

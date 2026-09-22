@@ -193,7 +193,12 @@ class LiveSimulationEngine:
             # 1. Select Target & Technique
             is_bandit = self.active_condition == "F"
             if is_bandit:
-                chosen_tech = self.bandit_attacker.pick_technique(round_number=r)
+                # Calculate network average defensive weights across non-isolated containers
+                current_def_weights = {}
+                for t in MITRE_TECHNIQUES.keys():
+                    wts = [self.node_weights[c["id"]].get_weights().get(t, 1.0 / len(MITRE_TECHNIQUES)) for c in EXPECTED_CONTAINERS]
+                    current_def_weights[t] = sum(wts) / len(wts) if wts else (1.0 / len(MITRE_TECHNIQUES))
+                chosen_tech = self.bandit_attacker.pick_technique(round_number=r, defense_weights=current_def_weights)
             else:
                 chosen_tech = self.static_attacker.sample_technique()
 

@@ -48,7 +48,8 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ alerts }) => {
   const filteredAlerts = alerts.filter((alert) => {
     if (filterMode === 'HONEYPOT' && !alert.isHoneypotCapture) return false;
     if (filterMode === 'REJECTED' && !alert.rejectedByConsistency) return false;
-    if (filterMode === 'CRITICAL' && alert.fusedScore < 0.75) return false;
+    const isCrit = (alert.threatSeverity ?? alert.fusedScore) >= 0.70;
+    if (filterMode === 'CRITICAL' && !isCrit) return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -65,7 +66,7 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ alerts }) => {
 
   const honeypotCount = alerts.filter((a) => a.isHoneypotCapture).length;
   const rejectedCount = alerts.filter((a) => a.rejectedByConsistency).length;
-  const criticalCount = alerts.filter((a) => a.fusedScore >= 0.75).length;
+  const criticalCount = alerts.filter((a) => (a.threatSeverity ?? a.fusedScore) >= 0.70).length;
 
   const panelContent = (
     <div
@@ -199,6 +200,9 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ alerts }) => {
             let tagColor = 'bg-slate-900 text-cyan-400 border-slate-800';
             let statusIcon = <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />;
 
+            const effectiveSeverity = alert.threatSeverity ?? alert.fusedScore;
+            const isCriticalThreat = effectiveSeverity >= 0.70;
+
             if (alert.rejectedByConsistency) {
               borderStyle = 'border-amber-500/30 bg-amber-950/20 text-amber-200';
               tagColor = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
@@ -207,7 +211,7 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ alerts }) => {
               borderStyle = 'border-emerald-500/30 bg-emerald-950/20 text-emerald-200';
               tagColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
               statusIcon = <Zap className="w-3.5 h-3.5 text-emerald-400" />;
-            } else if (alert.fusedScore >= 0.75) {
+            } else if (isCriticalThreat) {
               borderStyle = 'border-rose-500/40 bg-rose-950/20 text-rose-100';
               tagColor = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
               statusIcon = <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />;
@@ -244,15 +248,17 @@ export const AlertFeed: React.FC<AlertFeedProps> = ({ alerts }) => {
 
                 {/* Score Barometer & Profile Vector */}
                 <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 pt-1.5 border-t border-slate-800/80">
-                  <span className="truncate max-w-[140px]">
-                    Adversary: <strong className="text-slate-300 font-normal">{alert.attackerProfile}</strong>
+                  <span className="truncate max-w-[130px]">
+                    Adv: <strong className="text-slate-300 font-normal">{alert.attackerProfile}</strong>
                   </span>
-                  <div className="flex items-center gap-1">
-                    <span>Score:</span>
-                    <span className={`font-semibold ${
-                      alert.fusedScore >= 0.7 ? 'text-rose-400' : 'text-cyan-400'
-                    }`}>
-                      {(alert.fusedScore * 100).toFixed(0)}%
+                  <div className="flex items-center gap-2">
+                    <span title="Anomaly Detector Fused Output">
+                      Fused: <strong className="text-slate-200">{(alert.fusedScore * 100).toFixed(0)}%</strong>
+                    </span>
+                    <span title="Evidence-based Threat Severity">
+                      Severity: <strong className={isCriticalThreat ? 'text-rose-400' : effectiveSeverity >= 0.50 ? 'text-amber-400' : 'text-cyan-400'}>
+                        {(effectiveSeverity * 100).toFixed(0)}%
+                      </strong>
                     </span>
                   </div>
                 </div>
