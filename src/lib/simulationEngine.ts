@@ -18,6 +18,18 @@ export class SimulationEngine {
     if (this.state.totalAlertCount === undefined) {
       this.state.totalAlertCount = 0;
     }
+    if (this.state.totalHoneypotTargets === undefined) {
+      this.state.totalHoneypotTargets = 0;
+    }
+    if (this.state.totalHoneypotCaptures === undefined) {
+      this.state.totalHoneypotCaptures = 0;
+    }
+    if (this.state.totalConsistencyChecks === undefined) {
+      this.state.totalConsistencyChecks = 0;
+    }
+    if (this.state.totalConsistencyRejections === undefined) {
+      this.state.totalConsistencyRejections = 0;
+    }
   }
 
   public getState(): SimulationState {
@@ -30,6 +42,10 @@ export class SimulationEngine {
       newState.simMttdValues = { A: 140, B: 90, C: 75, D: 65, E: 30 };
       newState.totalAlertCount = 0;
       newState.attackStartRound = null;
+      newState.totalHoneypotTargets = 0;
+      newState.totalHoneypotCaptures = 0;
+      newState.totalConsistencyChecks = 0;
+      newState.totalConsistencyRejections = 0;
     }
     this.state = { ...this.state, ...newState };
   }
@@ -102,12 +118,16 @@ export class SimulationEngine {
     let rejectedByConsistency = false;
 
     if (targetNode.isHoneypot && isHoneypotActive) {
+      this.state.totalHoneypotTargets = (this.state.totalHoneypotTargets || 0) + 1;
+      this.state.totalConsistencyChecks = (this.state.totalConsistencyChecks || 0) + 1;
+
       // Attacker poisoning attempt probability
       isPoisonedAttempt = Math.random() < 0.35;
       
       if (isPoisonedAttempt) {
         // Consistency checker validates entropy / delta timing
         rejectedByConsistency = true;
+        this.state.totalConsistencyRejections = (this.state.totalConsistencyRejections || 0) + 1;
         this.addLog(
           `[CONSISTENCY CHECKER] Rejected statistical anomaly sequence targeting Honeypot ${targetNode.name} (${selectedSurface}). Poisoning blocked.`
         );
@@ -328,6 +348,11 @@ export class SimulationEngine {
 
     // 9. Alert Generation & Logging
     if (isDetected || rejectedByConsistency) {
+      const isHoneypotCapture = Boolean(targetNode.isHoneypot && !rejectedByConsistency);
+      if (isHoneypotCapture) {
+        this.state.totalHoneypotCaptures = (this.state.totalHoneypotCaptures || 0) + 1;
+      }
+
       const isCritical = fusedScore >= 0.75;
       const newAlert: AlertEvent = {
         id: `alert-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -350,7 +375,7 @@ export class SimulationEngine {
           : isCritical
           ? 'Critical Isolation & Network Disconnect'
           : 'Dynamic Isolation & Weight Boost',
-        isHoneypotCapture: targetNode.isHoneypot && !rejectedByConsistency,
+        isHoneypotCapture,
         rejectedByConsistency,
       };
 
@@ -403,12 +428,12 @@ export class SimulationEngine {
     const s = this.state.simMttdValues;
     const newMttdEntry = {
       round,
-      ConditionA: Number((s.A + (Math.random() - 0.5) * 4).toFixed(1)),
-      ConditionB: Number((s.B + (Math.random() - 0.5) * 3).toFixed(1)),
-      ConditionC: Number((s.C + (Math.random() - 0.5) * 3).toFixed(1)),
-      ConditionD: Number((s.D + (Math.random() - 0.5) * 3).toFixed(1)),
-      ConditionE: Number((s.E + (Math.random() - 0.5) * 2).toFixed(1)),
-      ConditionF: Number((rollingAvg + (Math.random() - 0.5) * 3).toFixed(1)),
+      ConditionA: Number(Math.max(0, s.A + (Math.random() - 0.5) * 4).toFixed(1)),
+      ConditionB: Number(Math.max(0, s.B + (Math.random() - 0.5) * 3).toFixed(1)),
+      ConditionC: Number(Math.max(0, s.C + (Math.random() - 0.5) * 3).toFixed(1)),
+      ConditionD: Number(Math.max(0, s.D + (Math.random() - 0.5) * 3).toFixed(1)),
+      ConditionE: Number(Math.max(0, s.E + (Math.random() - 0.5) * 2).toFixed(1)),
+      ConditionF: Number(Math.max(0, rollingAvg + (Math.random() - 0.5) * 3).toFixed(1)),
     };
 
     // Keep last 80 entries so chart shows meaningful trajectory
@@ -430,18 +455,21 @@ export class SimulationEngine {
 
     // 12. Update ablation metrics live every 50 rounds
     if (round % 50 === 0 && buf.length >= 3) {
+      const activeCond = this.state.activeCondition;
       this.state.metrics = this.state.metrics.map(m => {
-        if (m.conditionId === 'F') {
+        if (m.conditionId === activeCond) {
+          const honeypotEngagementRate = (this.state.totalHoneypotTargets || 0) > 0
+            ? Number((((this.state.totalHoneypotCaptures || 0) / this.state.totalHoneypotTargets) * 100).toFixed(1))
+            : m.honeypotEngagementRate;
+          const consistencyRejectionRate = (this.state.totalConsistencyChecks || 0) > 0
+            ? Number((((this.state.totalConsistencyRejections || 0) / this.state.totalConsistencyChecks) * 100).toFixed(1))
+            : m.consistencyRejectionRate;
+
           return {
             ...m,
             mttd: Number(rollingAvg.toFixed(1)),
-            fpr: Number((0.5 + Math.random() * 0.6).toFixed(1)),
-            honeypotEngagementRate: Number(
-              (60 + Math.random() * 10).toFixed(1)),
-            predictionAccuracy: Number(
-              (85 + Math.random() * 8).toFixed(1)),
-            consistencyRejectionRate: Number(
-              (28 + Math.random() * 8).toFixed(1)),
+            honeypotEngagementRate,
+            consistencyRejectionRate,
           };
         }
         return m;

@@ -1,4 +1,4 @@
-import { SimNode, NetworkEdge, AblationCondition, AblationMetric, UcbSurfaceStats, AttackSurface } from '../types';
+import { SimNode, NetworkEdge, AblationCondition, AblationMetric, UcbSurfaceStats, AttackSurface, NodeType } from '../types';
 import { MITRE_SURFACE_MAP, ATTACK_SURFACES } from './mitre';
 
 export function generateInitialRisk(): Record<AttackSurface, number> {
@@ -19,7 +19,7 @@ export function generateInitialDefensiveAllocation(): Record<AttackSurface, numb
   return alloc as Record<AttackSurface, number>;
 }
 
-export function generateInitialWeights(): Record<AttackSurface, number> {
+export function generateInitialWeights(nodeType?: NodeType | string): Record<AttackSurface, number> {
   return generateInitialDefensiveAllocation();
 }
 
@@ -293,12 +293,10 @@ export const INITIAL_METRICS: AblationMetric[] = [
     conditionId: 'A',
     conditionName: 'Condition A (Baseline)',
     mttd: 142.5,
-    fpr: 4.8,
     weightConvergenceSpeed: 68,
     detectionRegret: 85.2,
     collaborativeAdvantage: 0.0,
     honeypotEngagementRate: 0.0,
-    predictionAccuracy: 0.0,
     consistencyRejectionRate: 0.0,
     banditRegret: 12.4,
   },
@@ -306,12 +304,10 @@ export const INITIAL_METRICS: AblationMetric[] = [
     conditionId: 'B',
     conditionName: 'Condition B (Collab Only)',
     mttd: 88.3,
-    fpr: 2.1,
     weightConvergenceSpeed: 34,
     detectionRegret: 48.6,
     collaborativeAdvantage: 38.0,
     honeypotEngagementRate: 0.0,
-    predictionAccuracy: 0.0,
     consistencyRejectionRate: 0.0,
     banditRegret: 18.2,
   },
@@ -319,12 +315,10 @@ export const INITIAL_METRICS: AblationMetric[] = [
     conditionId: 'C',
     conditionName: 'Condition C (Honeypot Only)',
     mttd: 72.1,
-    fpr: 1.4,
     weightConvergenceSpeed: 28,
     detectionRegret: 36.1,
     collaborativeAdvantage: 15.2,
     honeypotEngagementRate: 41.5,
-    predictionAccuracy: 0.0,
     consistencyRejectionRate: 18.5,
     banditRegret: 24.1,
   },
@@ -332,12 +326,10 @@ export const INITIAL_METRICS: AblationMetric[] = [
     conditionId: 'D',
     conditionName: 'Condition D (Predictor Only)',
     mttd: 64.8,
-    fpr: 1.9,
     weightConvergenceSpeed: 30,
     detectionRegret: 31.0,
     collaborativeAdvantage: 12.0,
     honeypotEngagementRate: 0.0,
-    predictionAccuracy: 79.4,
     consistencyRejectionRate: 0.0,
     banditRegret: 22.0,
   },
@@ -345,26 +337,22 @@ export const INITIAL_METRICS: AblationMetric[] = [
     conditionId: 'E',
     conditionName: 'Condition E (All Defenses vs Naive)',
     mttd: 28.4,
-    fpr: 0.6,
     weightConvergenceSpeed: 14,
     detectionRegret: 11.2,
     collaborativeAdvantage: 80.1,
     honeypotEngagementRate: 58.2,
-    predictionAccuracy: 92.1,
     consistencyRejectionRate: 12.0,
     banditRegret: 8.5,
   },
   {
     conditionId: 'F',
     conditionName: 'Condition F (Full System vs UCB Bandit)',
-    mttd: 36.2,
-    fpr: 0.8,
+    mttd: 36.0,
     weightConvergenceSpeed: 18,
     detectionRegret: 15.8,
     collaborativeAdvantage: 74.6,
-    honeypotEngagementRate: 64.8,
-    predictionAccuracy: 88.5,
-    consistencyRejectionRate: 31.2,
+    honeypotEngagementRate: 0.0,
+    consistencyRejectionRate: 0.0,
     banditRegret: 42.8,
   },
 ];

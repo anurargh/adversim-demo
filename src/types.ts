@@ -19,8 +19,9 @@ export interface MitreMapping {
   surface: AttackSurface;
   techniqueCode: string;
   techniqueName: string;
-  label: string;
+  label?: string;
   stage: 'Reconnaissance' | 'Initial Access' | 'Execution' | 'Persistence' | 'Defense Evasion' | 'Lateral Movement' | 'Exfiltration';
+  baseExploitability: number;
 }
 
 export type AttackerProfileType = 
@@ -114,16 +115,15 @@ export interface AblationCondition {
   attackerType: 'Naive' | 'Bandit' | 'Static';
 }
 
+// fpr and predictionAccuracy are omitted because the simulation has no false-positive model and no prediction-accuracy validation loop yet, so there is nothing real to report.
 export interface AblationMetric {
   conditionId: ConditionId;
   conditionName: string;
-  mttd: number; // Mean Time To Detection in seconds/rounds
-  fpr: number; // False Positive Rate %
+  mttd: number; // Mean Time To Detection in rounds
   weightConvergenceSpeed: number; // rounds to converge
   detectionRegret: number;
   collaborativeAdvantage: number; // % improvement
   honeypotEngagementRate: number; // %
-  predictionAccuracy: number; // %
   consistencyRejectionRate: number; // %
   banditRegret: number;
 }
@@ -145,4 +145,8 @@ export interface SimulationState {
   rollingMttdBuffer: number[];
   simMttdValues: { A: number; B: number; C: number; D: number; E: number };
   totalAlertCount: number;
+  totalHoneypotTargets: number;
+  totalHoneypotCaptures: number;
+  totalConsistencyChecks: number;
+  totalConsistencyRejections: number;
 }

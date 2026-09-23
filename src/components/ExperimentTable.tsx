@@ -99,13 +99,11 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
           <thead>
             <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider border-y border-slate-800 text-[10px] sticky top-0 z-10">
               <th className="py-2 px-3">Condition Profile</th>
-              <th className="py-2 px-2">MTTD (s)</th>
-              <th className="py-2 px-2">FPR (%)</th>
+              <th className="py-2 px-2">MTTD (rounds)</th>
               <th className="py-2 px-2">Weight Conv.</th>
               <th className="py-2 px-2">Det. Regret</th>
               <th className="py-2 px-2">Collab. Adv</th>
               <th className="py-2 px-2">Honeypot Eng.</th>
-              <th className="py-2 px-2">Pred. Acc.</th>
               <th className="py-2 px-2">Filter Rej.</th>
               <th className="py-2 px-2">Bandit Regret</th>
             </tr>
@@ -113,6 +111,7 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
           <tbody className="divide-y divide-slate-800/60">
             {metrics.map((row) => {
               const isActive = activeCondition === row.conditionId;
+              const isReference = row.conditionId !== activeCondition;
 
               return (
                 <tr
@@ -121,24 +120,46 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
                   className={`cursor-pointer transition-colors ${
                     isActive
                       ? 'bg-slate-800/80 text-cyan-200 font-semibold'
-                      : 'text-slate-300 hover:bg-slate-900'
+                      : 'text-slate-300 hover:bg-slate-900/60'
                   }`}
                 >
                   <td className="py-2.5 px-3 flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-cyan-400' : 'bg-slate-700'}`} />
-                    <span className={isActive ? 'text-cyan-300 font-medium' : 'text-slate-200'}>
+                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]' : 'bg-slate-700'}`} />
+                    <span className={isActive ? 'text-cyan-300 font-medium' : 'text-slate-300'}>
                       {row.conditionName}
                     </span>
+                    {isReference ? (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider bg-slate-900 border border-slate-800 text-slate-400 font-normal">
+                        Reference
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 flex items-center gap-1 font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                        Live
+                      </span>
+                    )}
                   </td>
-                  <td className="py-2.5 px-2 font-semibold text-rose-300">{row.mttd}s</td>
-                  <td className="py-2.5 px-2 text-amber-300">{row.fpr}%</td>
-                  <td className="py-2.5 px-2 text-slate-400">{row.weightConvergenceSpeed} r</td>
-                  <td className="py-2.5 px-2 text-slate-300">{row.detectionRegret}</td>
-                  <td className="py-2.5 px-2 font-semibold text-cyan-300">{row.collaborativeAdvantage}%</td>
-                  <td className="py-2.5 px-2 text-teal-300">{row.honeypotEngagementRate}%</td>
-                  <td className="py-2.5 px-2 text-purple-300">{row.predictionAccuracy}%</td>
-                  <td className="py-2.5 px-2 text-amber-300">{row.consistencyRejectionRate}%</td>
-                  <td className="py-2.5 px-2 text-slate-400">{row.banditRegret}</td>
+                  {isActive ? (
+                    <>
+                      <td className="py-2.5 px-2 font-semibold text-rose-300">{row.mttd} rounds</td>
+                      <td className="py-2.5 px-2 text-cyan-300 font-medium">{row.weightConvergenceSpeed} r</td>
+                      <td className="py-2.5 px-2 text-slate-200 font-medium">{row.detectionRegret}</td>
+                      <td className="py-2.5 px-2 font-semibold text-cyan-300">{row.collaborativeAdvantage}%</td>
+                      <td className="py-2.5 px-2 text-teal-300 font-medium">{row.honeypotEngagementRate}%</td>
+                      <td className="py-2.5 px-2 text-amber-300 font-medium">{row.consistencyRejectionRate}%</td>
+                      <td className="py-2.5 px-2 text-slate-200 font-medium">{row.banditRegret}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-2.5 px-2 text-slate-400 font-mono">{row.mttd} rounds</td>
+                      <td className="py-2.5 px-2 text-slate-500 font-mono">{row.weightConvergenceSpeed} r</td>
+                      <td className="py-2.5 px-2 text-slate-500 font-mono">{row.detectionRegret}</td>
+                      <td className="py-2.5 px-2 text-slate-400 font-mono">{row.collaborativeAdvantage}%</td>
+                      <td className="py-2.5 px-2 text-slate-400 font-mono">{row.honeypotEngagementRate}%</td>
+                      <td className="py-2.5 px-2 text-slate-400 font-mono">{row.consistencyRejectionRate}%</td>
+                      <td className="py-2.5 px-2 text-slate-500 font-mono">{row.banditRegret}</td>
+                    </>
+                  )}
                 </tr>
               );
             })}
@@ -148,11 +169,11 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
 
       {/* Footer Status Strip */}
       <div className="border-t border-slate-800 pt-2 flex items-center justify-between text-[10px] font-mono text-slate-400">
-        <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
-          Active: <strong className="text-slate-200 font-medium">Condition {activeCondition}</strong>
+        <span className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" />
+          Active: <strong className="text-cyan-300 font-medium">Condition {activeCondition}</strong> (Live Telemetry)
         </span>
-        <span className="text-slate-500">6 Experimental Configurations</span>
+        <span className="text-slate-500">5 Reference Baselines + 1 Live Active Condition</span>
       </div>
     </div>
   );
