@@ -65,18 +65,18 @@ export default function App() {
         mttdHistory: [
           {
             round: 0,
-            ConditionA: 145,
-            ConditionB: 95,
-            ConditionC: 80,
-            ConditionD: 70,
-            ConditionE: 35,
-            ConditionF: 36,
+            ConditionA: 142.5,
+            ConditionB: 88.3,
+            ConditionC: 72.1,
+            ConditionD: 64.8,
+            ConditionE: 27.4,
+            ConditionF: 36.8,
           },
         ],
         logs: ['[SYSTEM] AdverSim Kinetic Cyber-Defense Telemetry Suite Online.'],
         attackStartRound: null,
         rollingMttdBuffer: [],
-        simMttdValues: { A: 140, B: 90, C: 75, D: 65, E: 30 },
+        simMttdValues: { A: 142.5, B: 88.3, C: 72.1, D: 64.8, E: 27.4 },
         totalAlertCount: 0,
       })
   );
@@ -314,17 +314,17 @@ export default function App() {
       logs: ['[SYSTEM] Telemetry buffers reset to baseline T+000.'],
       attackStartRound: null,
       rollingMttdBuffer: [],
-      simMttdValues: { A: 140, B: 90, C: 75, D: 65, E: 30 },
+      simMttdValues: { A: 142.5, B: 88.3, C: 72.1, D: 64.8, E: 27.4 },
       totalAlertCount: 0,
       mttdHistory: [
         {
           round: 0,
-          ConditionA: 145,
-          ConditionB: 95,
-          ConditionC: 80,
-          ConditionD: 70,
-          ConditionE: 35,
-          ConditionF: 36,
+          ConditionA: 142.5,
+          ConditionB: 88.3,
+          ConditionC: 72.1,
+          ConditionD: 64.8,
+          ConditionE: 27.4,
+          ConditionF: 36.8,
         },
       ],
     });
@@ -508,19 +508,19 @@ export default function App() {
         rollingMttdBuffer: [],
         attackStartRound: null,
         totalAlertCount: 0,
-        simMttdValues: { A: 140, B: 90, C: 75, D: 65, E: 30 },
+        simMttdValues: { A: 142.5, B: 88.3, C: 72.1, D: 64.8, E: 27.4 },
         logs: [
           `[SYSTEM] Architecture reconfigured to '${preset.name}'. Simulation restarted from baseline (Round 0).`,
         ],
         mttdHistory: [
           {
             round: 0,
-            ConditionA: 145,
-            ConditionB: 95,
-            ConditionC: 80,
-            ConditionD: 70,
-            ConditionE: 35,
-            ConditionF: 36,
+            ConditionA: 142.5,
+            ConditionB: 88.3,
+            ConditionC: 72.1,
+            ConditionD: 64.8,
+            ConditionE: 27.4,
+            ConditionF: 36.8,
           },
         ],
       });
@@ -552,10 +552,24 @@ export default function App() {
     defconColor = 'bg-amber-950/70 text-amber-300 border-amber-500/40';
   }
 
-  // Active MTTD
-  const latestMttd = simState.mttdHistory[simState.mttdHistory.length - 1];
-  const mttdF = latestMttd?.ConditionF || 36;
-  const mttdA = latestMttd?.ConditionA || 140;
+  // Active MTTD for currently selected condition
+  const latestMttd = simState.mttdHistory[simState.mttdHistory.length - 1] || {
+    ConditionA: 142.5,
+    ConditionB: 88.3,
+    ConditionC: 72.1,
+    ConditionD: 64.8,
+    ConditionE: 27.4,
+    ConditionF: 36.8,
+  };
+  const activeKey = `Condition${simState.activeCondition}` as keyof typeof latestMttd;
+  const activeMetric = simState.metrics.find((m) => m.conditionId === simState.activeCondition);
+  const activeMttd = typeof latestMttd[activeKey] === 'number'
+    ? (latestMttd[activeKey] as number)
+    : (activeMetric?.mttd ?? 36.8);
+  const baselineA = (latestMttd.ConditionA as number) || 142.5;
+  const mttdReductionPct = simState.activeCondition === 'A'
+    ? 0
+    : Math.max(0, Math.min(95, ((baselineA - activeMttd) / baselineA) * 100));
 
   return (
     <div className="min-h-screen bg-[#07090e] text-slate-100 font-mono p-3 md:p-5 space-y-4">
@@ -697,14 +711,21 @@ export default function App() {
       {/* 2. RESTRAINED 5 KPI TILES */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
         <div className="bg-[#0b1120] border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
-          <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            Time to Detect (MTTD)
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 text-[10px] uppercase flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              Time to Detect (MTTD)
+            </span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-slate-900 text-cyan-400 border border-slate-800">
+              Cond {simState.activeCondition}
+            </span>
+          </div>
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-lg font-bold text-cyan-400">{mttdF.toFixed(1)}s</span>
+            <span className="text-lg font-bold text-cyan-400">{activeMttd.toFixed(1)}s</span>
             <span className="text-[10px] text-slate-400">
-              -{(((mttdA - mttdF) / mttdA) * 100).toFixed(0)}% vs baseline
+              {simState.activeCondition === 'A'
+                ? 'Baseline Reference'
+                : `-${mttdReductionPct.toFixed(0)}% vs baseline A`}
             </span>
           </div>
         </div>
@@ -920,7 +941,7 @@ export default function App() {
         {/* TAB 3: ABLATION & DETECTION BENCHMARKS */}
         {activeTab === 'ablation' && (
           <div className="space-y-4">
-            <MTTDChart history={simState.mttdHistory} />
+            <MTTDChart history={simState.mttdHistory} activeCondition={simState.activeCondition} />
             <ExperimentTable
               metrics={simState.metrics}
               activeCondition={simState.activeCondition}

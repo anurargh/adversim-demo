@@ -90,6 +90,9 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
 
         <p className="text-[11px] text-slate-400 mt-2">
           Empirical benchmarks isolating peer collaboration, honeypots, Markov forecasting, and bandit adaptation.
+          <span className="block mt-1 text-[10px] text-slate-500">
+            <strong>Adversary Dynamics:</strong> Condition E tests all defenses against a naive, predictable attacker (fastest MTTD ~27.4s). Condition F tests against an adaptive UCB Multi-Armed Bandit that explores blind spots and evades hardened surfaces, resulting in higher detection latency (~36.8s).
+          </span>
         </p>
       </div>
 
@@ -129,8 +132,15 @@ export const ExperimentTable: React.FC<ExperimentTableProps> = ({
                     <span className={isActive ? 'text-cyan-300 font-medium' : 'text-slate-200'}>
                       {row.conditionName}
                     </span>
+                    {isActive && (
+                      <span className="text-[9px] px-1 py-0.2 bg-cyan-950 text-cyan-400 border border-cyan-800/60 rounded">
+                        Active
+                      </span>
+                    )}
                   </td>
-                  <td className="py-2.5 px-2 font-semibold text-rose-300">{row.mttd}s</td>
+                  <td className="py-2.5 px-2 font-semibold text-rose-300">
+                    {typeof row.mttd === 'number' ? row.mttd.toFixed(1) : row.mttd}s
+                  </td>
                   <td className="py-2.5 px-2 text-amber-300">{row.fpr}%</td>
                   <td className="py-2.5 px-2 text-slate-400">{row.weightConvergenceSpeed} r</td>
                   <td className="py-2.5 px-2 text-slate-300">{row.detectionRegret}</td>

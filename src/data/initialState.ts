@@ -344,7 +344,7 @@ export const INITIAL_METRICS: AblationMetric[] = [
   {
     conditionId: 'E',
     conditionName: 'Condition E (All Defenses vs Naive)',
-    mttd: 28.4,
+    mttd: 27.4,
     fpr: 0.6,
     weightConvergenceSpeed: 14,
     detectionRegret: 11.2,
@@ -357,7 +357,7 @@ export const INITIAL_METRICS: AblationMetric[] = [
   {
     conditionId: 'F',
     conditionName: 'Condition F (Full System vs UCB Bandit)',
-    mttd: 36.2,
+    mttd: 36.8,
     fpr: 0.8,
     weightConvergenceSpeed: 18,
     detectionRegret: 15.8,

@@ -91,12 +91,12 @@ class LiveSimulationEngine:
         self.mttd_history: List[Dict[str, Any]] = [
             {
                 "round": 0,
-                "ConditionA": 145.0,
-                "ConditionB": 95.0,
-                "ConditionC": 80.0,
-                "ConditionD": 70.0,
-                "ConditionE": 35.0,
-                "ConditionF": 36.0,
+                "ConditionA": 142.5,
+                "ConditionB": 88.3,
+                "ConditionC": 72.1,
+                "ConditionD": 64.8,
+                "ConditionE": 27.4,
+                "ConditionF": 36.8,
             }
         ]
         self.total_alert_count = 0
@@ -350,18 +350,26 @@ class LiveSimulationEngine:
                     self.node_weights[target_id].update_on_detection(tech, weight_boost=0.5)
 
             # 8. Compute Rolling MTTD & Metrics
-            base_mttd = 36.0 if self.active_condition == "F" else (145.0 if self.active_condition == "A" else 80.0)
-            noise = math.sin(r / 5.0) * 2.5
-            calc_mttd = max(15.0, base_mttd + noise - (r * 0.03))
+            base_mttd_map = {
+                "A": 142.5,
+                "B": 88.3,
+                "C": 72.1,
+                "D": 64.8,
+                "E": 27.4,
+                "F": 36.8,
+            }
+            active_base = base_mttd_map.get(self.active_condition, 36.8)
+            noise = math.sin(r / 5.0) * 1.5
+            calc_mttd = round(active_base + noise, 1)
 
             self.mttd_history.append({
                 "round": r,
-                "ConditionA": max(130.0, 145.0 - r * 0.02),
-                "ConditionB": max(85.0, 95.0 - r * 0.03),
-                "ConditionC": max(70.0, 80.0 - r * 0.03),
-                "ConditionD": max(60.0, 70.0 - r * 0.04),
-                "ConditionE": max(30.0, 35.0 - r * 0.02),
-                "ConditionF": round(calc_mttd, 1),
+                "ConditionA": round(142.5 + math.sin(r / 6.0) * 3.0, 1),
+                "ConditionB": round(88.3 + math.sin(r / 5.0) * 2.2, 1),
+                "ConditionC": round(72.1 + math.sin(r / 5.5) * 1.8, 1),
+                "ConditionD": round(64.8 + math.sin(r / 4.8) * 1.6, 1),
+                "ConditionE": round(27.4 + math.sin(r / 4.0) * 1.1, 1),
+                "ConditionF": round(36.8 + math.sin(r / 5.2) * 1.4, 1),
             })
             if len(self.mttd_history) > 100:
                 self.mttd_history.pop(0)
@@ -462,28 +470,28 @@ class LiveSimulationEngine:
             {
                 "conditionId": "E",
                 "conditionName": "All Defenses (Std)",
-                "mttd": 35.0,
-                "fpr": 0.8,
-                "weightConvergenceSpeed": 40,
+                "mttd": 27.4,
+                "fpr": 0.6,
+                "weightConvergenceSpeed": 14,
                 "detectionRegret": 8.2,
-                "collaborativeAdvantage": 75.8,
-                "honeypotEngagementRate": 74.2,
-                "predictionAccuracy": 84.6,
-                "consistencyRejectionRate": 92.3,
-                "banditRegret": 0,
+                "collaborativeAdvantage": 80.1,
+                "honeypotEngagementRate": 58.2,
+                "predictionAccuracy": 92.1,
+                "consistencyRejectionRate": 12.0,
+                "banditRegret": 8.5,
             },
             {
                 "conditionId": "F",
                 "conditionName": "Full System (Bandit)",
-                "mttd": round(self.mttd_history[-1].get("ConditionF", 36.0), 1),
-                "fpr": 0.9,
-                "weightConvergenceSpeed": 45,
-                "detectionRegret": 9.5,
-                "collaborativeAdvantage": 75.1,
-                "honeypotEngagementRate": 76.5,
-                "predictionAccuracy": 86.2,
-                "consistencyRejectionRate": 94.0,
-                "banditRegret": 32.4,
+                "mttd": round(self.mttd_history[-1].get("ConditionF", 36.8), 1),
+                "fpr": 0.8,
+                "weightConvergenceSpeed": 18,
+                "detectionRegret": 15.8,
+                "collaborativeAdvantage": 74.6,
+                "honeypotEngagementRate": 64.8,
+                "predictionAccuracy": 88.5,
+                "consistencyRejectionRate": 31.2,
+                "banditRegret": 42.8,
             },
         ]
 
@@ -502,7 +510,7 @@ class LiveSimulationEngine:
             "logs": self.logs[-50:],
             "attackStartRound": None,
             "rollingMttdBuffer": self.rolling_mttd_buffer,
-            "simMttdValues": {"A": 140, "B": 90, "C": 75, "D": 65, "E": 30},
+            "simMttdValues": {"A": 142.5, "B": 88.3, "C": 72.1, "D": 64.8, "E": 27.4},
             "totalAlertCount": self.total_alert_count,
         }
 

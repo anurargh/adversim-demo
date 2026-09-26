@@ -171,13 +171,13 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
     // 8. Live Dynamic MTTD (Detection Velocity) calculation
     // Combines baseline empirical MTTD with architectural graph factors
     const latestHist = mttdHistory.length > 0 ? mttdHistory[mttdHistory.length - 1] : null;
-    let baseMttd = 36.0;
-    if (activeCondition === 'A') baseMttd = latestHist?.ConditionA ?? 140.0;
-    else if (activeCondition === 'B') baseMttd = latestHist?.ConditionB ?? 90.0;
-    else if (activeCondition === 'C') baseMttd = latestHist?.ConditionC ?? 75.0;
-    else if (activeCondition === 'D') baseMttd = latestHist?.ConditionD ?? 65.0;
-    else if (activeCondition === 'E') baseMttd = latestHist?.ConditionE ?? 30.0;
-    else baseMttd = latestHist?.ConditionF ?? 36.0;
+    let baseMttd = 36.8;
+    if (activeCondition === 'A') baseMttd = latestHist?.ConditionA ?? 142.5;
+    else if (activeCondition === 'B') baseMttd = latestHist?.ConditionB ?? 88.3;
+    else if (activeCondition === 'C') baseMttd = latestHist?.ConditionC ?? 72.1;
+    else if (activeCondition === 'D') baseMttd = latestHist?.ConditionD ?? 64.8;
+    else if (activeCondition === 'E') baseMttd = latestHist?.ConditionE ?? 27.4;
+    else baseMttd = latestHist?.ConditionF ?? 36.8;
 
     // Architectural adjustment factors
     let archMttdFactor = 1.0;
