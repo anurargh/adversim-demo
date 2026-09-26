@@ -2,9 +2,24 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import { SimNode } from '../types';
 import { Activity, ShieldAlert, Target, Zap, Maximize2, Minimize2, X, BarChart3, Layers } from 'lucide-react';
-import { TECH_KEYS_15 } from '../data/mitre';
 
-export { TECH_KEYS_15 };
+export const TECH_KEYS_15 = [
+  { key: 'network_scanning', label: 'Scan', alias: 'scanning', code: 'T1046', name: 'Network Service Scanning', stage: 'Reconnaissance' },
+  { key: 'service_enumeration', label: 'Enum', alias: 'enum', code: 'T1057', name: 'Process / Service Discovery', stage: 'Reconnaissance' },
+  { key: 'os_fingerprinting', label: 'OS-FP', alias: 'os', code: 'T1082', name: 'System Information Discovery', stage: 'Reconnaissance' },
+  { key: 'credential_access', label: 'Creds', alias: 'credential', code: 'T1003', name: 'OS Credential Dumping', stage: 'Initial Access' },
+  { key: 'script_execution', label: 'Script', alias: 'script', code: 'T1059', name: 'Command & Scripting Interpreter', stage: 'Execution' },
+  { key: 'scheduled_task', label: 'Task', alias: 'task', code: 'T1053', name: 'Scheduled Task / Job', stage: 'Execution' },
+  { key: 'process_injection', label: 'Inject', alias: 'injection', code: 'T1055', name: 'Process Injection', stage: 'Defense Evasion' },
+  { key: 'registry_persistence', label: 'RegPersist', alias: 'registry', code: 'T1112', name: 'Modify Registry Persistence', stage: 'Persistence' },
+  { key: 'account_creation', label: 'AccCreate', alias: 'account', code: 'T1136', name: 'Local / Domain Account Creation', stage: 'Persistence' },
+  { key: 'log_clearing', label: 'LogClear', alias: 'log', code: 'T1070', name: 'Indicator Removal on Host', stage: 'Defense Evasion' },
+  { key: 'lateral_movement', label: 'LatMove', alias: 'lateral', code: 'T1021', name: 'Remote Services Lateral Move', stage: 'Lateral Movement' },
+  { key: 'pass_the_hash', label: 'PtH', alias: 'pth', code: 'T1550', name: 'Use Alternate Authentication Material', stage: 'Lateral Movement' },
+  { key: 'outbound_transfer', label: 'Exfil', alias: 'exfil', code: 'T1041', name: 'Exfiltration Over C2 Channel', stage: 'Exfiltration' },
+  { key: 'data_compression', label: 'Compress', alias: 'compress', code: 'T1560', name: 'Archive Collected Data', stage: 'Exfiltration' },
+  { key: 'encrypted_channel', label: 'EncChan', alias: 'channel', code: 'T1573', name: 'Encrypted Non-Standard Channel', stage: 'Exfiltration' },
+];
 
 export interface RadarChartProps {
   weightVector?: Record<string, number>;

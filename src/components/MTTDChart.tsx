@@ -86,7 +86,7 @@ export const MTTDChart: React.FC<MTTDChartProps> = ({ history }) => {
               <span>{reductionPct.toFixed(1)}% Time Reduction</span>
             </div>
             <span className="px-2 py-1 rounded bg-slate-900 text-slate-300 border border-slate-800 text-[10px]">
-              Active: <strong className="text-cyan-400">{currentF.toFixed(1)} rounds</strong> vs Baseline: <strong className="text-slate-400">{baselineA.toFixed(1)} rounds</strong>
+              Active: <strong className="text-cyan-400">{currentF.toFixed(1)}s</strong> vs Baseline: <strong className="text-slate-400">{baselineA.toFixed(1)}s</strong>
             </span>
 
             {/* Expand / Minimize Button */}
@@ -128,7 +128,7 @@ export const MTTDChart: React.FC<MTTDChartProps> = ({ history }) => {
             <YAxis
               stroke="#64748b"
               tick={{ fontSize: 10, fontFamily: 'ui-monospace, monospace' }}
-              label={{ value: 'MTTD (rounds)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 10 }}
+              label={{ value: 'MTTD (seconds)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 10 }}
             />
             <Tooltip
               contentStyle={{

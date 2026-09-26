@@ -78,10 +78,6 @@ export default function App() {
         rollingMttdBuffer: [],
         simMttdValues: { A: 140, B: 90, C: 75, D: 65, E: 30 },
         totalAlertCount: 0,
-        totalHoneypotTargets: 0,
-        totalHoneypotCaptures: 0,
-        totalConsistencyChecks: 0,
-        totalConsistencyRejections: 0,
       })
   );
 
@@ -706,7 +702,7 @@ export default function App() {
             Time to Detect (MTTD)
           </span>
           <div className="mt-1 flex items-baseline justify-between">
-            <span className="text-lg font-bold text-cyan-400">{mttdF.toFixed(1)} rounds</span>
+            <span className="text-lg font-bold text-cyan-400">{mttdF.toFixed(1)}s</span>
             <span className="text-[10px] text-slate-400">
               -{(((mttdA - mttdF) / mttdA) * 100).toFixed(0)}% vs baseline
             </span>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { SimNode, NetworkEdge, AblationMetric, AlertEvent, StagePrediction } from '../types';
-import { MITRE_SURFACE_MAP } from '../data/mitre';
 import {
   ShieldCheck,
   AlertTriangle,
@@ -249,7 +248,7 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
       flaws.push(
         `Direct User-to-Admin Exposure (${userToAdminEdges.length} link${
           userToAdminEdges.length > 1 ? 's' : ''
-        }): Critical risk of Pass-the-Hash (${MITRE_SURFACE_MAP.pass_the_hash.techniqueCode}) & credential harvesting.`
+        }): Critical risk of Pass-the-Hash (T1550) & credential harvesting.`
       );
     } else if (adminNodes.length > 0 && userNodes.length > 0) {
       strengths.push(
@@ -362,10 +361,10 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
 
     // Evaluate Detection Velocity & Sensor Fidelity
     if (liveMttd <= 35) {
-      strengths.push(`Fast Detection Velocity (MTTD: ${liveMttd} rounds): Attacks are identified before lateral consolidation.`);
+      strengths.push(`Fast Detection Velocity (MTTD: ${liveMttd}s): Attacks are identified before lateral consolidation.`);
     } else if (liveMttd > 55) {
       score -= 15;
-      flaws.push(`Sluggish Detection Velocity (MTTD: ${liveMttd} rounds): Delayed triage gives attackers time to establish persistence.`);
+      flaws.push(`Sluggish Detection Velocity (MTTD: ${liveMttd}s): Delayed triage gives attackers time to establish persistence.`);
     }
 
     if (avgFpr <= 0.012 && nodeCount >= 3) {
@@ -536,7 +535,7 @@ export const ArchitectureBenchmark: React.FC<ArchitectureBenchmarkProps> = ({
           </span>
           <div className="mt-1.5 flex items-baseline justify-between">
             <span className="text-base font-semibold text-slate-100">
-              {analysis.liveMttd.toFixed(1)} <span className="text-[10px] text-slate-500 font-normal">rounds</span>
+              {analysis.liveMttd.toFixed(1)} <span className="text-[10px] text-slate-500 font-normal">s</span>
             </span>
             <span
               className={`text-xs font-semibold ${

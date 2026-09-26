@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import { SimNode, NetworkEdge, NodeType } from '../types';
-import { ARCHITECTURE_PRESETS, generateInitialWeights, generateInitialRisk, generateInitialDefensiveAllocation } from '../data/initialState';
+import { ARCHITECTURE_PRESETS, generateInitialWeights } from '../data/initialState';
 import {
   Shield,
   Zap,
@@ -633,7 +633,6 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
   const handleSaveAddNode = () => {
     if (!onAddNode) return;
     const isHp = newNodeType === 'Honeypot';
-    const weights = generateInitialWeights(newNodeType);
     const newNode: SimNode = {
       id: `node-${newNodeType.toLowerCase()}-${Date.now().toString().slice(-4)}`,
       name: newNodeName.trim() || `Defended ${newNodeType}`,
@@ -643,9 +642,9 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({
       fidelity: isHp ? newNodeFidelity : undefined,
       status: 'normal',
       fpr: Number(newNodeFpr.toFixed(4)),
-      bayesianRisk: generateInitialRisk(),
-      defensiveAllocation: generateInitialDefensiveAllocation(),
-      bayesianWeights: weights,
+      bayesianRisk: generateInitialWeights(),
+      defensiveAllocation: generateInitialWeights(),
+      bayesianWeights: generateInitialWeights(),
       x: 320 + (Math.random() - 0.5) * 100,
       y: 180 + (Math.random() - 0.5) * 80,
     };
